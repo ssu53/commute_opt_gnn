@@ -17,7 +17,7 @@ class CayleyGraphGenerator:
         self.V = V
         self.n = self.find_n()
 
-        self.gen_set = [np.array([[1, 1], [0, 1]]), np.array([[1, 0], [1, 1]])]
+        self.gen_set = [np.array([[1, 1], [0, 1]]), np.array([[1, 0], [1, 1]])] # page 5
         self.dimension = self.gen_set[0].shape[0]
 
         self.adj_matrix = None
@@ -27,6 +27,8 @@ class CayleyGraphGenerator:
     def find_n(self):
         """
         Finds the smallest n such that the Cayley graph has at least V nodes.
+
+        Equation (10)
         """
         n = 1
         while True:
@@ -54,6 +56,8 @@ class CayleyGraphGenerator:
     def generate_cayley_graph(self):
         """
         Generates and returns the adjacency matrix of the Cayley graph.
+
+        Algorithm 1
         """
         elements = self.get_group_elements()
 
@@ -104,7 +108,9 @@ class CayleyGraphGenerator:
     def trim_graph(self):
         """
         Performs BFS on the self.G graph and creates a new graph self.G_trimmed
-        consisting of only the first self.V nodes visited.
+        consisting of only the first self.V nodes visited
+
+        Page 8
         """
         if self.G is None:
             raise Exception(
