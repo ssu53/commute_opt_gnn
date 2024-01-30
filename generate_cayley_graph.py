@@ -59,7 +59,6 @@ class CayleyGraphGenerator:
 
         self.adj_matrix = np.zeros((len(elements), len(elements)), dtype=int)
 
-        # Mapping each group element to its index in the elements list
         element_to_index = {
             self.matrix_to_tuple(element): idx for idx, element in enumerate(elements)
         }
@@ -134,8 +133,6 @@ class CayleyGraphGenerator:
             raise Exception(
                 "Great, you have your Cayley graph but now either set trimmed=False or run trim_graph()"
             )
-
-        # Draw the graph
 
         nx.draw(self.G_trimmed if trimmed else self.G, node_size=100)
 
