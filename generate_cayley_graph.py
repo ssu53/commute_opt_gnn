@@ -15,7 +15,7 @@ class CayleyGraphGenerator:
         Initializes the class with a target number of vertices V.
         """
         self.V = V
-        self.n = self.find_n()
+        self.n = self._find_n()
 
         self.gen_set = [np.array([[1, 1], [0, 1]]), np.array([[1, 0], [1, 1]])] # page 5
         self.dimension = self.gen_set[0].shape[0]
@@ -24,7 +24,7 @@ class CayleyGraphGenerator:
         self.G = None
         self.G_trimmed = None
 
-    def find_n(self):
+    def _find_n(self):
         """
         Finds the smallest n such that the Cayley graph has at least V nodes.
 
@@ -32,12 +32,12 @@ class CayleyGraphGenerator:
         """
         n = 1
         while True:
-            size = n**3 * np.prod([1 - 1 / p**2 for p in self.prime_factors(n)])
+            size = n**3 * np.prod([1 - 1 / p**2 for p in self._prime_factors(n)])
             if size >= self.V:
                 return n
             n += 1
 
-    def prime_factors(self, n):
+    def _prime_factors(self, n):
         """
         Returns a list of unique prime factors of n.
         """

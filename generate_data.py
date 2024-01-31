@@ -26,6 +26,9 @@ def make_dummy():
     print(g.y)
     print(g.interact_strength)
 
+    print("returning g")
+    return g
+
 
 
 def make_zinc():

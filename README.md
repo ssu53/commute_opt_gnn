@@ -1,5 +1,17 @@
 # Commute-time-optimal graphs for GNNs
 
+## Setup
+
+```
+conda create --prefix /path/to/here/l65-env python=3.11
+conda activate /path/to/here/l65-env
+
+pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113
+
+
+
+```
+
 ## Generating Cayley Graphs
 
 ```python
