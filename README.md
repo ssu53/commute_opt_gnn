@@ -8,8 +8,7 @@ conda activate /path/to/here/l65-env
 
 pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113
 
-
-
+pip install -r requirements.txt
 ```
 
 ## Generating Cayley Graphs
