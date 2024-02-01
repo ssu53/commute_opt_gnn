@@ -3,6 +3,7 @@
 import torch
 from torch_geometric.data import Data
 from torch_geometric.datasets import ZINC
+from torch_geometric.loader import DataLoader
 
 from data import TanhMix
 
@@ -49,10 +50,40 @@ def make_zinc():
 
 
 
+def get_data():
+    
+    zinc_graphs = ZINC(
+        root = 'data_zinc',
+        subset = True,
+        split = 'train',
+    )
+
+
+    graphs_train = []
+    graphs_val = []
+
+    for i in range(200):
+        g = TanhMix(id=i, data=zinc_graphs[i], seed=i)
+        graphs_train.append(g.to_torch_data())
+
+    for i in range(100,110):
+        g = TanhMix(id=i, data=zinc_graphs[i], seed=i)
+        graphs_val.append(g.to_torch_data())
+
+
+    # can't batch differently sized graphs, need to implement
+    dl_train = DataLoader(graphs_train, batch_size=1) 
+    dl_val = DataLoader(graphs_val, batch_size=1)
+    
+    return dl_train, dl_val
+
+
+
 def main():
 
     make_dummy()
     # make_zinc()
+    # get_data()
 
 
 

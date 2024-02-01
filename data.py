@@ -4,6 +4,7 @@ from functools import partial
 
 import networkx as nx
 from torch_geometric.utils import to_networkx
+from torch_geometric.data import Data
 
 
 
@@ -15,11 +16,11 @@ class MyGraph:
 
     @property
     def num_nodes(self):
-        return self.data.x.shape[0]
+        return self.data.num_nodes
     
     @property
     def num_edges(self):
-        return self.data.edge_index.shape[1]
+        return self.data.num_edges
     
     @property
     def edge_index(self):
@@ -41,9 +42,9 @@ class MyGraph:
     def edge_attr(self):
         return self.data.edge_attr
 
-    def draw(self, layout=partial(nx.spring_layout, seed=42)):
+    def draw(self, layout=partial(nx.spring_layout, seed=42), with_labels=True):
         g = to_networkx(self.data, to_undirected=True)
-        return nx.draw(g, pos=layout(g))
+        return nx.draw(g, pos=layout(g), with_labels=with_labels)
 
 
 
@@ -108,4 +109,10 @@ class TanhMix(MyGraph):
         we are not concerned with edge attributes in this synthetic dataset
         """
         self.data.edge_attr = None
+
+    def to_torch_data(self):
+        """
+        casts to the usual torch Data object
+        """
+        return Data(x=self.x, y=self.y, edge_index=self.edge_index, interact_strength=self.interact_strength, id=self.id)
 
