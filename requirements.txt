@@ -1,3 +1,7 @@
+numpy
+networkx
+jupyter
+torch
 einops
-torch_geometric
+torch-geometric
 matplotlib
