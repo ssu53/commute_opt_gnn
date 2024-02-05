@@ -1,10 +1,13 @@
 import torch
 import einops
 from functools import partial
+import random
 
 import networkx as nx
 from torch_geometric.utils import to_networkx
 from torch_geometric.data import Data
+
+from generate_cayley_graph import CayleyGraphGenerator
 
 
 
@@ -13,6 +16,7 @@ class MyGraph:
     def __init__(self, id, data):
         self.id = id
         self.data = data
+        self.expander_edge_index = None
 
     @property
     def num_nodes(self):
@@ -45,6 +49,46 @@ class MyGraph:
     def draw(self, layout=partial(nx.spring_layout, seed=42), with_labels=True):
         g = to_networkx(self.data, to_undirected=True)
         return nx.draw(g, pos=layout(g), with_labels=with_labels)
+
+    def draw_expander(self, layout=partial(nx.spring_layout, seed=42), with_labels=True):
+        expander_edge_index_tuples = [(edge[0].item(), edge[1].item()) for edge in self.expander_edge_index.T]
+        g = nx.Graph(expander_edge_index_tuples)
+        return nx.draw(g, pos=layout(g), with_labels=with_labels)
+    
+
+    def attach_expander(self, expander):
+
+        if expander is None:
+            pass
+
+        elif expander == "cayley":
+            
+            cg_gen = CayleyGraphGenerator(self.num_nodes) 
+            cg_gen.generate_cayley_graph() 
+            cg_gen.trim_graph()
+
+            gexp = nx.relabel_nodes(cg_gen.G_trimmed, dict(zip(cg_gen.G_trimmed, range(self.num_nodes))))
+            gexp_edge_list = einops.rearrange(torch.tensor(list(gexp.edges)), 'e n -> n e')
+            self.expander_edge_index = gexp_edge_list
+        
+        elif expander == "topk":
+            
+            K = 1
+
+            gexp_edge_list = []
+
+            interactions = [(i, j, self.interact_strength[i, j]) for i in range(self.num_nodes) for j in range(i+1, self.num_nodes)]
+            interactions_sorted = sorted(interactions, key=lambda x: x[2], reverse=True)
+
+            for i, j, strength in interactions_sorted[:K]:
+                gexp_edge_list.append((i,j))
+            
+            gexp_edge_list = einops.rearrange(torch.tensor(gexp_edge_list), 'e n -> n e')
+            self.expander_edge_index = gexp_edge_list
+
+        else:
+            raise NotImplementedError
+
 
 
 
@@ -115,4 +159,87 @@ class TanhMix(MyGraph):
         casts to the usual torch Data object
         """
         return Data(x=self.x, y=self.y, edge_index=self.edge_index, interact_strength=self.interact_strength, id=self.id)
+
+
+
+class ExpMix(MyGraph):
+
+    def __init__(self, id, data, x=None, y=None, dim_feat=16, expander=None, seed=42):
+
+        super().__init__(id, data)
+        
+        torch.manual_seed(seed)
+        random.seed(seed)
+
+        self.dim_feat_synth = dim_feat
+        self.feat_max = 1.0
+
+        self._set_x(x)
+        self._set_y(y)
+        self.attach_expander(expander)
+
+    
+    def _set_x(self, x):
+        """
+        d-dimensional features
+        there are <= d distinct pairs of interacting nodes
+        each pair has random uniform features in a distinct dimension
+        interaction appears in regression target as exp(x_i + x_j) term
+        which is also the maximal mixing (Di Giovanni et al, 2023)
+        """
+        
+        self.interact_strength = torch.zeros((self.num_nodes, self.num_nodes))
+
+        if x is None:
+            x = torch.zeros((self.num_nodes, self.dim_feat_synth))
+
+            nodes = list(range(self.num_nodes))
+            random.shuffle(nodes)
+
+            ind_dims = list(range(self.dim_feat_synth))
+            random.shuffle(ind_dims)
+
+            num_interacting_pairs = random.randint(1,self.dim_feat_synth)
+            
+            for _ in range(num_interacting_pairs):
+
+                if len(nodes) < 2: break
+                node1 = nodes.pop()
+                node2 = nodes.pop()
+                ind_dim = ind_dims.pop()
+                x1 = random.uniform(0,self.feat_max)
+                x2 = random.uniform(0,self.feat_max)
+
+                x[node1, ind_dim] = x1
+                x[node2, ind_dim] = x2
+                self.interact_strength[node1,node2] = x1 + x2
+                self.interact_strength[node2, node1] = x1 + x2
+        
+        self.data.x = x
+
+        assert self.dim_feat_synth == self.dim_feat
+
+    def _set_y(self, y):
+        """
+        graph regression target is 
+            \sum_d \sum_{i, j} exp(x_i + x_j)
+        """
+
+        if y is None:
+            y = self.x.sum(dim=0) # sum over node dimension
+            y = torch.sum(torch.exp(y) - 1.0)
+
+        self.data.y = y
+    
+    def _set_edge_attr(self):
+        """
+        we are not concerned with edge attributes in this synthetic dataset
+        """
+        self.data.edge_attr = None
+    
+    def to_torch_data(self):
+        """
+        casts to the usual torch Data object
+        """
+        return Data(x=self.x, y=self.y, edge_index=self.edge_index, interact_strength=self.interact_strength, expander_edge_index=self.expander_edge_index, id=self.id)
 

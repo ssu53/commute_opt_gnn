@@ -5,8 +5,7 @@ from torch_geometric.data import Data
 from torch_geometric.datasets import ZINC
 from torch_geometric.loader import DataLoader
 
-from data import TanhMix
-
+from data import ExpMix
 
 # %%
 
@@ -19,7 +18,7 @@ def make_dummy():
         edge_index=torch.tensor([[0,0,0,2],[1,2,3,4]]),
     )
 
-    g = TanhMix(id='dummy', data=dummy_data, seed=0)
+    g = ExpMix(id='dummy', data=dummy_data, seed=0)
 
     g.draw()
     print(f"{g.num_nodes=} {g.num_edges=} {g.dim_feat=}")
@@ -40,17 +39,22 @@ def make_zinc():
         split = 'train',
     )
 
-    g = TanhMix(id=123, data=zinc_graphs[123], seed=123)
+    g = ExpMix(id=123, data=zinc_graphs[1], seed=123, expander="cayley")
 
+    # g.draw_expander()
     g.draw()
     print(f"{g.num_nodes=} {g.num_edges=} {g.dim_feat=}")
     print(g.x)
     print(g.y)
     print(g.interact_strength)
+    print(g.edge_index)
+    print(g.expander_edge_index)
 
 
 
-def get_data():
+def get_data(device=None, expander=None):
+
+    if device is None: device = torch.device("cpu")
     
     zinc_graphs = ZINC(
         root = 'data_zinc',
@@ -62,14 +66,17 @@ def get_data():
     graphs_train = []
     graphs_val = []
 
-    for i in range(200):
-        g = TanhMix(id=i, data=zinc_graphs[i], seed=i)
-        graphs_train.append(g.to_torch_data())
+    for i in range(500):
+        g = ExpMix(id=i, data=zinc_graphs[i], seed=i, expander=expander)
+        graphs_train.append(g.to_torch_data().to(device))
 
-    for i in range(100,110):
-        g = TanhMix(id=i, data=zinc_graphs[i], seed=i)
-        graphs_val.append(g.to_torch_data())
+    for i in range(500,600):
+        g = ExpMix(id=i, data=zinc_graphs[i], seed=i, expander=expander)
+        graphs_val.append(g.to_torch_data().to(device))
 
+    # import numpy as np
+    # print(np.mean([g.y for g in graphs_train]), np.std([g.y for g in graphs_train]))
+    # print(np.mean([g.y for g in graphs_val]), np.std([g.y for g in graphs_val]))
 
     # can't batch differently sized graphs, need to implement
     dl_train = DataLoader(graphs_train, batch_size=1) 

@@ -2,17 +2,21 @@ import torch
 import numpy as np
 
 from generate_data import get_data
-from models import GINVanilla
+from models import GINVanilla, GINExpander
 
 
 # TODO: graph batching
-# TODO: train + eval methods with expanders
 
 
 def train_model(data, model, optimiser, loss_fn):
     model.train()
     optimiser.zero_grad()
-    y_pred = model(data.x, data.edge_index)
+    if isinstance(model, GINVanilla):
+        y_pred = model(data.x, data.edge_index)
+    elif isinstance(model, GINExpander):
+        y_pred = model(data.x, data.edge_index, data.expander_edge_index)
+    else:
+        raise NotImplementedError
     loss = loss_fn(y_pred, data.y)
     loss.backward()
     optimiser.step()
@@ -25,7 +29,12 @@ def eval_model(data_loader, model, loss_fn):
     model.eval()
     loss = []
     for data in data_loader:
-        y_pred = model(data.x, data.edge_index)
+        if isinstance(model, GINVanilla):
+            y_pred = model(data.x, data.edge_index)
+        elif isinstance(model, GINExpander):
+            y_pred = model(data.x, data.edge_index, data.expander_edge_index)
+        else:
+            raise NotImplementedError
         loss.append(loss_fn(y_pred, data.y).item())
     return np.mean(loss)
 
@@ -52,11 +61,25 @@ def train_eval_loop(model, data_loader_train, data_loader_val, lr: float, num_ep
 
 def main():
 
-    dl_train, dl_val = get_data()
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    model = GINVanilla(in_channels=1, hidden_channels=16, num_layers=5, out_channels=1)
+    dl_train, dl_val = get_data(expander="topk")
 
-    train_eval_loop(model, dl_train, dl_val, lr=0.001, num_epochs=10, print_every=1)
+    for data in dl_train:
+        print(data.expander_edge_index)
+        break
+
+    print("Training a GIN model without expanders...")
+
+    model = GINVanilla(in_channels=16, hidden_channels=8, num_layers=5, out_channels=1)
+
+    train_eval_loop(model, dl_train, dl_val, lr=0.001, num_epochs=100, print_every=10)
+
+    print("Training a GIN model with expanders...")
+
+    model = GINExpander(in_channels=16, hidden_channels=8, num_layers=5, out_channels=1)
+
+    train_eval_loop(model, dl_train, dl_val, lr=0.001, num_epochs=100, print_every=10)
 
 
 
