@@ -57,45 +57,20 @@ class MyGraph:
         g = nx.Graph(expander_edge_index_tuples)
         return nx.draw(g, pos=layout(g), with_labels=with_labels)
 
-    def attach_expander(self, expander):
-        if expander is None:
-            pass
 
-        elif expander == "cayley":
-            cg_gen = CayleyGraphGenerator(self.num_nodes)
-            cg_gen.generate_cayley_graph()
-            cg_gen.trim_graph()
+    def attach_expander_cayley(self):
 
-            gexp = nx.relabel_nodes(
-                cg_gen.G_trimmed, dict(zip(cg_gen.G_trimmed, range(self.num_nodes)))
-            )
-            gexp_edge_list = einops.rearrange(
-                torch.tensor(list(gexp.edges)), "e n -> n e"
-            )
-            self.expander_edge_index = gexp_edge_list
+        cg_gen = CayleyGraphGenerator(self.num_nodes)
+        cg_gen.generate_cayley_graph()
+        cg_gen.trim_graph()
 
-        elif expander == "topk":
-            K = 1
+        gexp = nx.relabel_nodes(
+            cg_gen.G_trimmed, dict(zip(cg_gen.G_trimmed, range(self.num_nodes)))
+        )
+        gexp_edge_list = einops.rearrange(torch.tensor(list(gexp.edges)), "e n -> n e")
+        
+        self.expander_edge_index = gexp_edge_list
 
-            gexp_edge_list = []
-
-            interactions = [
-                (i, j, self.interact_strength[i, j])
-                for i in range(self.num_nodes)
-                for j in range(i + 1, self.num_nodes)
-            ]
-            interactions_sorted = sorted(interactions, key=lambda x: x[2], reverse=True)
-
-            for i, j, strength in interactions_sorted[:K]:
-                gexp_edge_list.append((i, j))
-
-            gexp_edge_list = einops.rearrange(
-                torch.tensor(gexp_edge_list), "e n -> n e"
-            )
-            self.expander_edge_index = gexp_edge_list
-
-        else:
-            raise NotImplementedError
 
 
 class TanhMix(MyGraph):
@@ -159,6 +134,14 @@ class TanhMix(MyGraph):
         we are not concerned with edge attributes in this synthetic dataset
         """
         self.data.edge_attr = None
+    
+    def attach_expander(self, expander):
+        if expander is None:
+            pass
+        elif expander == "cayley":
+            self.attach_expander_cayley()
+        else:
+            raise NotImplementedError
 
     def to_torch_data(self):
         """
@@ -245,6 +228,36 @@ class ExpMix(MyGraph):
         """
         self.data.edge_attr = None
 
+    def attach_expander(self, expander):
+        if expander is None:
+            pass
+
+        elif expander == "cayley":
+            self.attach_expander_cayley()
+
+        elif expander == "topk":
+            K = 1
+
+            gexp_edge_list = []
+
+            interactions = [
+                (i, j, self.interact_strength[i, j])
+                for i in range(self.num_nodes)
+                for j in range(i + 1, self.num_nodes)
+            ]
+            interactions_sorted = sorted(interactions, key=lambda x: x[2], reverse=True)
+
+            for i, j, strength in interactions_sorted[:K]:
+                gexp_edge_list.append((i, j))
+
+            gexp_edge_list = einops.rearrange(
+                torch.tensor(gexp_edge_list), "e n -> n e"
+            )
+            self.expander_edge_index = gexp_edge_list
+
+        else:
+            raise NotImplementedError
+
     def to_torch_data(self):
         """
         casts to the usual torch Data object
@@ -253,7 +266,9 @@ class ExpMix(MyGraph):
             x=self.x,
             y=self.y,
             edge_index=self.edge_index,
-            interact_strength=self.interact_strength,
+            # in current form, this attribute is not compatible with graph batching
+            # TODO: store instead as edge attribute. not urgent as model shouldn't access it anyways
+            # interact_strength=self.interact_strength,
             expander_edge_index=self.expander_edge_index,
             id=self.id,
         )
@@ -267,6 +282,8 @@ class DoubleExp(MyGraph):
         random.seed(seed)
 
         self.c1, self.c2, self.d = c1, c2, d
+
+        self.distances = None
 
         self._set_x(x)
         self._set_y(y)
@@ -293,6 +310,7 @@ class DoubleExp(MyGraph):
         if y is None:
             g = to_networkx(self.data, to_undirected=True)
             distances = dict(nx.all_pairs_shortest_path_length(g, cutoff=self.d))
+            self.distances = distances
 
             y = 0
 
@@ -315,6 +333,31 @@ class DoubleExp(MyGraph):
         """
         self.data.edge_attr = None
 
+    def attach_expander(self, expander):
+        if expander is None:
+            pass
+
+        elif expander == "cayley":
+            self.attach_expander_cayley()
+
+        elif expander == "interacting_pairs":
+            
+            distances = self.distances
+            gexp_edge_list = []
+
+            for i in distances:
+                for j, dist in distances[i].items():
+                    if (dist == 1) or (dist == self.d):
+                        gexp_edge_list.append((i, j))
+            
+            gexp_edge_list = einops.rearrange(
+                torch.tensor(gexp_edge_list), "e n -> n e"
+            )
+            self.expander_edge_index = gexp_edge_list
+
+        else:
+            raise NotImplementedError
+
     def to_torch_data(self):
         """
         casts to the usual torch Data object
@@ -323,5 +366,6 @@ class DoubleExp(MyGraph):
             x=self.x,
             y=self.y,
             edge_index=self.edge_index,
+            expander_edge_index=self.expander_edge_index,
             id=self.id,
         )

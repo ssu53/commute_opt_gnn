@@ -1,14 +1,12 @@
-import numpy as np
 import torch
 from torch_geometric.data import Data
 from torch_geometric.datasets import ZINC
-from torch_geometric.loader import DataLoader
 from tqdm import tqdm
 
 from data import DoubleExp, ExpMix
 
 
-def make_dummy():
+def make_single_dummy():
     dummy_data = Data(
         x=torch.zeros((5, 1)),
         y=None,
@@ -28,7 +26,7 @@ def make_dummy():
     return g
 
 
-def make_zinc():
+def make_single_zinc():
     zinc_graphs = ZINC(
         root="data_zinc",
         subset=True,
@@ -47,39 +45,7 @@ def make_zinc():
     print(g.expander_edge_index)
 
 
-def get_data(device=None, expander=None):
-    if device is None:
-        device = torch.device("cpu")
-
-    zinc_graphs = ZINC(
-        root="data_zinc",
-        subset=True,
-        split="train",
-    )
-
-    graphs_train = []
-    graphs_val = []
-
-    for i in range(500):
-        g = ExpMix(id=i, data=zinc_graphs[i], seed=i, expander=expander)
-        graphs_train.append(g.to_torch_data().to(device))
-
-    for i in range(500, 600):
-        g = ExpMix(id=i, data=zinc_graphs[i], seed=i, expander=expander)
-        graphs_val.append(g.to_torch_data().to(device))
-
-    # import numpy as np
-    # print(np.mean([g.y for g in graphs_train]), np.std([g.y for g in graphs_train]))
-    # print(np.mean([g.y for g in graphs_val]), np.std([g.y for g in graphs_val]))
-
-    # can't batch differently sized graphs, need to implement
-    dl_train = DataLoader(graphs_train, batch_size=1)
-    dl_val = DataLoader(graphs_val, batch_size=1)
-
-    return dl_train, dl_val
-
-
-def get_data_double_exp(device=None, expander=None):
+def get_data(device=None, expander=None, size_train=500, size_val=100):
     if device is None:
         device = torch.device("cpu")
 
@@ -98,9 +64,37 @@ def get_data_double_exp(device=None, expander=None):
     graphs_train = []
     graphs_val = []
 
-    c1, c2, d = 0.5, 0.5, 5
+    for i in tqdm(range(size_train)):
+        g = ExpMix(id=i, data=zinc_graphs_train[i], seed=i, expander=expander)
+        graphs_train.append(g.to_torch_data().to(device))
 
-    for i in tqdm(range(500)):
+    for i in tqdm(range(size_val)):
+        g = ExpMix(id=i, data=zinc_graphs_val[i], seed=i, expander=expander)
+        graphs_val.append(g.to_torch_data().to(device))
+
+    return graphs_train, graphs_val
+
+
+def get_data_double_exp(device=None, expander=None, size_train=500, size_val=100, c1=0.5, c2=0.5, d=5):
+    if device is None:
+        device = torch.device("cpu")
+
+    zinc_graphs_train = ZINC(
+        root="data_zinc",
+        subset=True,
+        split="train",
+    )
+
+    zinc_graphs_val = ZINC(
+        root="data_zinc",
+        subset=True,
+        split="val",
+    )
+
+    graphs_train = []
+    graphs_val = []
+
+    for i in tqdm(range(size_train)):
         g = DoubleExp(
             id=i,
             data=zinc_graphs_train[i],
@@ -112,7 +106,7 @@ def get_data_double_exp(device=None, expander=None):
         )
         graphs_train.append(g.to_torch_data().to(device))
 
-    for i in tqdm(range(100)):
+    for i in tqdm(range(size_val)):
         g = DoubleExp(
             id=i,
             data=zinc_graphs_val[i],
@@ -124,19 +118,12 @@ def get_data_double_exp(device=None, expander=None):
         )
         graphs_val.append(g.to_torch_data().to(device))
 
-    print(np.mean([g.y for g in graphs_train]), np.std([g.y for g in graphs_train]))
-    print(np.mean([g.y for g in graphs_val]), np.std([g.y for g in graphs_val]))
-
-    # can't batch differently sized graphs, need to implement
-    dl_train = DataLoader(graphs_train, batch_size=1)
-    dl_val = DataLoader(graphs_val, batch_size=1)
-
-    return dl_train, dl_val
+    return graphs_train, graphs_val
 
 
 def main():
-    # make_dummy()
-    # make_zinc()
+    # make_single_dummy()
+    # make_single_zinc()
     # get_data()
     get_data_double_exp()
 
