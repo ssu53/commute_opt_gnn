@@ -23,3 +23,29 @@ generator.visualize_graph() # Visualize the graph (optional trimmed=False to see
 ```
 
 ![Cayley Graph Example](figures/cayley_graph_example.png)
+
+
+## Models
+
+Defined in `models.py`. 
+
+Feel free to ignore the legacy models:
+* `GINVanilla`
+* `GINExpander`
+
+Currently, we are only working with a GIN convolution model. Graph Isomorphism Network (GIN) introduced here: https://arxiv.org/abs/1810.00826. 
+
+Our implementation `MyGINConv` of the convolution (in particular, the definition of the MLP), mimics the definition in the EGP (Wilson + Velikovic) code. `num_layers` of this module, combined with linear input and output projections, make up our `GINModel`. 
+
+All models are compatible with graph batching. 
+
+
+## Training
+
+Run `python3 train.py` to run with all defaults. 
+
+Arguments are currently hardcoded in `main()`. TODO: configure these properly as argparse or hydra.
+
+The dataset is loaded with the rewiring choice. For the `DoubleExp` synthetic data, availble rewirings are: `"cayley"` (Cayley expander graph) and `"interacting_pairs"` (all pairs that pairwise interact per the definition of this dataset).
+
+Currently, `main()` first trains/evals a `GINModel` propagating on the base graph only, and then a `GINModel` propagating alternately on the base graph and rewired graph. 
