@@ -1,3 +1,5 @@
+# %%
+
 import torch
 from torch_geometric.data import Data
 from torch_geometric.datasets import ZINC
@@ -33,19 +35,21 @@ def make_single_zinc():
         split="train",
     )
 
-    g = ExpMix(id=123, data=zinc_graphs[1], seed=123, expander="cayley")
+    g = ExpMix(id=123, data=zinc_graphs[1], seed=123, rewirer="cayley")
 
-    # g.draw_expander()
+    # g.draw_rewire()
     g.draw()
     print(f"{g.num_nodes=} {g.num_edges=} {g.dim_feat=}")
     print(g.x)
     print(g.y)
     print(g.interact_strength)
     print(g.edge_index)
-    print(g.expander_edge_index)
+    print(g.rewire_edge_index)
+
+    return g
 
 
-def get_data(device=None, expander=None, size_train=500, size_val=100):
+def get_data(device=None, rewirer=None, size_train=500, size_val=100):
     if device is None:
         device = torch.device("cpu")
 
@@ -65,17 +69,17 @@ def get_data(device=None, expander=None, size_train=500, size_val=100):
     graphs_val = []
 
     for i in tqdm(range(size_train)):
-        g = ExpMix(id=i, data=zinc_graphs_train[i], seed=i, expander=expander)
+        g = ExpMix(id=i, data=zinc_graphs_train[i], seed=i, rewirer=rewirer)
         graphs_train.append(g.to_torch_data().to(device))
 
     for i in tqdm(range(size_val)):
-        g = ExpMix(id=i, data=zinc_graphs_val[i], seed=i, expander=expander)
+        g = ExpMix(id=i, data=zinc_graphs_val[i], seed=i, rewirer=rewirer)
         graphs_val.append(g.to_torch_data().to(device))
 
     return graphs_train, graphs_val
 
 
-def get_data_double_exp(device=None, expander=None, size_train=500, size_val=100, c1=0.5, c2=0.5, d=5):
+def get_data_double_exp(device=None, rewirer=None, size_train=500, size_val=100, c1=0.5, c2=0.5, d=5):
     if device is None:
         device = torch.device("cpu")
 
@@ -102,7 +106,7 @@ def get_data_double_exp(device=None, expander=None, size_train=500, size_val=100
             c2=c2,
             d=d,
             seed=i,
-            expander=expander,
+            rewirer=rewirer,
         )
         graphs_train.append(g.to_torch_data().to(device))
 
@@ -114,7 +118,7 @@ def get_data_double_exp(device=None, expander=None, size_train=500, size_val=100
             c2=c2,
             d=d,
             seed=i,
-            expander=expander,
+            rewirer=rewirer,
         )
         graphs_val.append(g.to_torch_data().to(device))
 
@@ -125,7 +129,7 @@ def main():
     # make_single_dummy()
     # make_single_zinc()
     # get_data()
-    get_data_double_exp()
+    # get_data_double_exp()
 
 
 if __name__ == "__main__":

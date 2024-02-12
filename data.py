@@ -14,7 +14,7 @@ class MyGraph:
     def __init__(self, id, data):
         self.id = id
         self.data = data
-        self.expander_edge_index = None
+        self.rewire_edge_index = None
 
     @property
     def num_nodes(self):
@@ -48,28 +48,28 @@ class MyGraph:
         g = to_networkx(self.data, to_undirected=True)
         return nx.draw(g, pos=layout(g), with_labels=with_labels)
 
-    def draw_expander(
+    def draw_rewire(
         self, layout=partial(nx.spring_layout, seed=42), with_labels=True
     ):
-        expander_edge_index_tuples = [
-            (edge[0].item(), edge[1].item()) for edge in self.expander_edge_index.T
+        rewire_edge_index_tuples = [
+            (edge[0].item(), edge[1].item()) for edge in self.rewire_edge_index.T
         ]
-        g = nx.Graph(expander_edge_index_tuples)
+        g = nx.Graph(rewire_edge_index_tuples)
         return nx.draw(g, pos=layout(g), with_labels=with_labels)
 
 
-    def attach_expander_cayley(self):
+    def attach_rewirer_cayley(self):
 
         cg_gen = CayleyGraphGenerator(self.num_nodes)
         cg_gen.generate_cayley_graph()
         cg_gen.trim_graph()
 
-        gexp = nx.relabel_nodes(
+        rewire_edge_index = nx.relabel_nodes(
             cg_gen.G_trimmed, dict(zip(cg_gen.G_trimmed, range(self.num_nodes)))
         )
-        gexp_edge_list = einops.rearrange(torch.tensor(list(gexp.edges)), "e n -> n e")
+        rewire_edge_index = einops.rearrange(torch.tensor(list(rewire_edge_index.edges)), "e n -> n e")
         
-        self.expander_edge_index = gexp_edge_list
+        self.rewire_edge_index = rewire_edge_index
 
 
 
@@ -135,11 +135,11 @@ class TanhMix(MyGraph):
         """
         self.data.edge_attr = None
     
-    def attach_expander(self, expander):
-        if expander is None:
+    def attach_rewirer(self, rewirer):
+        if rewirer is None:
             pass
-        elif expander == "cayley":
-            self.attach_expander_cayley()
+        elif rewirer == "cayley":
+            self.attach_rewirer_cayley()
         else:
             raise NotImplementedError
 
@@ -157,7 +157,7 @@ class TanhMix(MyGraph):
 
 
 class ExpMix(MyGraph):
-    def __init__(self, id, data, x=None, y=None, dim_feat=16, expander=None, seed=42):
+    def __init__(self, id, data, x=None, y=None, dim_feat=16, rewirer=None, seed=42):
         super().__init__(id, data)
 
         torch.manual_seed(seed)
@@ -168,7 +168,7 @@ class ExpMix(MyGraph):
 
         self._set_x(x)
         self._set_y(y)
-        self.attach_expander(expander)
+        self.attach_rewirer(rewirer)
 
     def _set_x(self, x):
         """
@@ -228,17 +228,17 @@ class ExpMix(MyGraph):
         """
         self.data.edge_attr = None
 
-    def attach_expander(self, expander):
-        if expander is None:
+    def attach_rewirer(self, rewirer):
+        if rewirer is None:
             pass
 
-        elif expander == "cayley":
-            self.attach_expander_cayley()
+        elif rewirer == "cayley":
+            self.attach_rewirer_cayley()
 
-        elif expander == "topk":
+        elif rewirer == "topk":
             K = 1
 
-            gexp_edge_list = []
+            rewire_edge_index = []
 
             interactions = [
                 (i, j, self.interact_strength[i, j])
@@ -248,12 +248,12 @@ class ExpMix(MyGraph):
             interactions_sorted = sorted(interactions, key=lambda x: x[2], reverse=True)
 
             for i, j, strength in interactions_sorted[:K]:
-                gexp_edge_list.append((i, j))
+                rewire_edge_index.append((i, j))
 
-            gexp_edge_list = einops.rearrange(
-                torch.tensor(gexp_edge_list), "e n -> n e"
+            rewire_edge_index = einops.rearrange(
+                torch.tensor(rewire_edge_index), "e n -> n e"
             )
-            self.expander_edge_index = gexp_edge_list
+            self.rewire_edge_index = rewire_edge_index
 
         else:
             raise NotImplementedError
@@ -269,13 +269,13 @@ class ExpMix(MyGraph):
             # in current form, this attribute is not compatible with graph batching
             # TODO: store instead as edge attribute. not urgent as model shouldn't access it anyways
             # interact_strength=self.interact_strength,
-            expander_edge_index=self.expander_edge_index,
+            rewire_edge_index=self.rewire_edge_index,
             id=self.id,
         )
 
 
 class DoubleExp(MyGraph):
-    def __init__(self, id, data, c1, c2, d, x=None, y=None, seed=42, expander=None):
+    def __init__(self, id, data, c1, c2, d, x=None, y=None, seed=42, rewirer=None):
         super().__init__(id, data)
 
         torch.manual_seed(seed)
@@ -287,7 +287,7 @@ class DoubleExp(MyGraph):
 
         self._set_x(x)
         self._set_y(y)
-        self.attach_expander(expander)
+        self.attach_rewirer(rewirer)
 
     def _set_x(self, x):
         """
@@ -333,27 +333,27 @@ class DoubleExp(MyGraph):
         """
         self.data.edge_attr = None
 
-    def attach_expander(self, expander):
-        if expander is None:
+    def attach_rewirer(self, rewirer):
+        if rewirer is None:
             pass
 
-        elif expander == "cayley":
-            self.attach_expander_cayley()
+        elif rewirer == "cayley":
+            self.attach_rewirer_cayley()
 
-        elif expander == "interacting_pairs":
+        elif rewirer == "interacting_pairs":
             
             distances = self.distances
-            gexp_edge_list = []
+            rewire_edge_index = []
 
             for i in distances:
                 for j, dist in distances[i].items():
                     if (dist == 1) or (dist == self.d):
-                        gexp_edge_list.append((i, j))
+                        rewire_edge_index.append((i, j))
             
-            gexp_edge_list = einops.rearrange(
-                torch.tensor(gexp_edge_list), "e n -> n e"
+            rewire_edge_index = einops.rearrange(
+                torch.tensor(rewire_edge_index), "e n -> n e"
             )
-            self.expander_edge_index = gexp_edge_list
+            self.rewire_edge_index = rewire_edge_index
 
         else:
             raise NotImplementedError
@@ -366,6 +366,6 @@ class DoubleExp(MyGraph):
             x=self.x,
             y=self.y,
             edge_index=self.edge_index,
-            expander_edge_index=self.expander_edge_index,
+            rewire_edge_index=self.rewire_edge_index,
             id=self.id,
         )

@@ -52,11 +52,11 @@ def train_eval_loop(model, data_loader_train, data_loader_val, lr: float, num_ep
 def main():
 
     # TODO: configure args
-    expander = "interacting_pairs"
+    rewirer = "cayley"
     c1 = 0.7
     c2 = 0.3
     d = 5
-    batch_size = 16
+    batch_size = 32
     hidden_channels = 8
     num_layers = 5
     drop_prob = 0.0
@@ -66,7 +66,7 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(
         "CONFIGS\n", 
-        f"{expander=}\n",
+        f"{rewirer=}\n",
         f"{c1=}\n",
         f"{c2=}\n",
         f"{d=}\n",
@@ -82,7 +82,7 @@ def main():
     
     # Get data
 
-    graphs_train, graphs_val = get_data_double_exp(expander=expander, device=device, c1=c1, c2=c2, d=d)
+    graphs_train, graphs_val = get_data_double_exp(rewirer=rewirer, device=device, c1=c1, c2=c2, d=d)
 
     print(f"train targets: {np.mean([g.y.cpu() for g in graphs_train]):.2f} +/- {np.std([g.y.cpu() for g in graphs_train]):.3f}")
     print(f"val targets: {np.mean([g.y.cpu() for g in graphs_val]):.2f} +/- {np.std([g.y.cpu() for g in graphs_val]):.3f}")
@@ -96,14 +96,14 @@ def main():
 
     # Train
 
-    print("Training a GIN model without expanders...")
+    print("Training a GIN model without rewiring...")
 
     model = GINModel(in_channels=in_channels, hidden_channels=hidden_channels, num_layers=num_layers, out_channels=out_channels, drop_prob=drop_prob, interleave_diff_graph=False)
     model.to(device)
 
     train_eval_loop(model, dl_train, dl_val, lr=lr, num_epochs=num_epochs, print_every=print_every)
 
-    print("Training a GIN model with expanders...")
+    print("Training a GIN model with interleaved rewiring...")
 
     model = GINModel(in_channels=in_channels, hidden_channels=hidden_channels, num_layers=num_layers, out_channels=out_channels, drop_prob=drop_prob, interleave_diff_graph=True)
     model.to(device)
