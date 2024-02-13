@@ -1,0 +1,24 @@
+wandb:
+  experiment_name: 'table-of-runs'
+  project: 'First runs'
+  entity: 'commute_opt_gnn'
+
+data:
+  c1: 0.7
+  c2: 0.3
+  c3: 0.1
+  d: 5
+  train_size: 1000
+  val_size: 100
+
+model:
+  hidden_channels: 8
+  num_layers: 6
+
+train:
+  lr: 0.001
+  num_epochs: 200
+  print_every: 10
+  train_batch_size: 32
+  val_batch_size: 32
+  drop_prob: 0.0 

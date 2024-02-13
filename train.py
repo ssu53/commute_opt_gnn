@@ -1,14 +1,18 @@
-import torch
+from pprint import pprint
+
 import numpy as np
-
-from generate_data import get_data_double_exp
+import torch
+import yaml
 from torch_geometric.loader import DataLoader
+from tqdm import tqdm
+
+import wandb
+from generate_data import get_data_double_exp
 from models import GINModel
+import json
 
 
-
-
-def train_model(data, model, optimiser, loss_fn):
+def train_model(data, model, optimiser, loss_fn, device):
     model.train()
     optimiser.zero_grad()
     y_pred = model(data)
@@ -16,7 +20,6 @@ def train_model(data, model, optimiser, loss_fn):
     loss.backward()
     optimiser.step()
     return loss.item()
-
 
 
 @torch.no_grad()
@@ -29,87 +32,172 @@ def eval_model(data_loader, model, loss_fn):
     return np.mean(loss)
 
 
-
-def train_eval_loop(model, data_loader_train, data_loader_val, lr: float, num_epochs: int, loss_fn=None, print_every=10):
-    
+def train_eval_loop(
+    model,
+    data_loader_train,
+    data_loader_val,
+    lr: float,
+    num_epochs: int,
+    print_every,
+    device,
+    loss_fn=None,
+    verbose=False,
+):
     optimiser = torch.optim.Adam(model.parameters(), lr=lr)
-    
+
     if loss_fn is None:
-        loss_fn = torch.nn.MSELoss(reduction='mean')
-        print("Using MSE Loss...")
-    
-    for epoch in range(1,num_epochs+1):
-        for data_train in data_loader_train:
-            train_loss = train_model(data_train, model, optimiser, loss_fn)
-        if epoch % print_every == 0:
-            val_loss = eval_model(data_loader_val, model, loss_fn)
-            print(f"Epoch {epoch} | train loss {train_loss:.3f} | val loss {val_loss:.3f}")
+        loss_fn = torch.nn.MSELoss(reduction="mean")
+        if verbose:
+            print("Using MSE Loss...")
 
-    return
+    epoch2valloss = {}
 
+    if verbose:
+        with tqdm(range(1, num_epochs + 1), unit="e") as tepoch:
+            for epoch in tepoch:
+                tepoch.set_description(f"Epoch {epoch}")
+                for data_train in data_loader_train:
+                    train_loss = train_model(
+                        data_train, model, optimiser, loss_fn, device
+                    )
+                if epoch % print_every == 0:
+                    val_loss = eval_model(data_loader_val, model, loss_fn)
+                    tepoch.set_postfix(train_loss=train_loss, val_loss=val_loss)
+                    epoch2valloss[epoch] = val_loss
+                    wandb.log({"train/loss": train_loss, "eval/loss": val_loss})
+                else:
+                    wandb.log({"train/loss": train_loss})
+        print(
+            f"Minimum validation loss was at epoch: {min(epoch2valloss, key=epoch2valloss.get)}, with loss: {min(epoch2valloss.values())}"
+        )
+    else:
+        for epoch in range(1, num_epochs + 1):
+            for data_train in data_loader_train:
+                train_loss = train_model(data_train, model, optimiser, loss_fn, device)
+            if epoch % print_every == 0:
+                val_loss = eval_model(data_loader_val, model, loss_fn)
+                wandb.log({"train/loss": train_loss, "eval/loss": val_loss})
+            else:
+                wandb.log({"train/loss": train_loss})
+
+    return val_loss
 
 
 def main():
+    with open("configs/config.yaml", "r") as f:
+        config = yaml.safe_load(f)
 
-    # TODO: configure args
-    rewirer = "cayley"
-    c1 = 0.7
-    c2 = 0.3
-    d = 5
-    batch_size = 32
-    hidden_channels = 8
-    num_layers = 5
-    drop_prob = 0.0
-    lr = 0.001
-    num_epochs = 100
-    print_every = 10
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(
-        "CONFIGS\n", 
-        f"{rewirer=}\n",
-        f"{c1=}\n",
-        f"{c2=}\n",
-        f"{d=}\n",
-        f"{batch_size=}\n",
-        f"{hidden_channels=}\n",
-        f"{num_layers=}\n",
-        f"{drop_prob=}\n",
-        f"{lr=}\n",
-        f"{num_epochs=}\n",
-        f"{print_every=}\n",
+    pprint(config)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Device: {device}")
+
+    results = {
+        "only_original": [],
+        "only_diff": {
+            "cayley": [],
+            "interacting_pairs": [],
+            "fully_connected": [],
+        },
+        "interleave": {
+            "cayley": [],
+            "interacting_pairs": [],
+            "fully_connected": [],
+        },
+    }
+
+    seeds = [73, 47, 23]
+
+    num_runs = len(seeds) * (
+        len(results["only_diff"].keys()) ** 2 - len(results["only_diff"].keys()) + 1
     )
 
-    
-    # Get data
+    with tqdm(total=num_runs) as pbar:
+        for run_num, seed in enumerate(seeds):
+            for m_idx, method in enumerate(results["only_diff"].keys()):
+                graphs_train, graphs_val = get_data_double_exp(
+                    rewirer=method,
+                    c1=config["data"]["c1"],
+                    c2=config["data"]["c2"],
+                    c3=config["data"]["c3"],
+                    d=config["data"]["d"],
+                    train_size=config["data"]["train_size"],
+                    val_size=config["data"]["val_size"],
+                    device=device,
+                    seed=seed,
+                )
 
-    graphs_train, graphs_val = get_data_double_exp(rewirer=rewirer, device=device, c1=c1, c2=c2, d=d)
+                # train_mean = np.mean([g.y.cpu() for g in graphs_train])
+                # train_std = np.std([g.y.cpu() for g in graphs_train])
+                # print(f"train targets: {train_mean:.2f} +/- {train_std:.3f}")
 
-    print(f"train targets: {np.mean([g.y.cpu() for g in graphs_train]):.2f} +/- {np.std([g.y.cpu() for g in graphs_train]):.3f}")
-    print(f"val targets: {np.mean([g.y.cpu() for g in graphs_val]):.2f} +/- {np.std([g.y.cpu() for g in graphs_val]):.3f}")
+                # val_mean = np.mean([g.y.cpu() for g in graphs_val])
+                # val_std = np.std([g.y.cpu() for g in graphs_val])
+                # print(f"val targets: {val_mean:.2f} +/- {val_std:.3f}")
 
-    dl_train = DataLoader(graphs_train, batch_size=batch_size)
-    dl_val = DataLoader(graphs_val, batch_size=batch_size)
+                dl_train = DataLoader(
+                    graphs_train, batch_size=config["train"]["train_batch_size"]
+                )
+                dl_val = DataLoader(
+                    graphs_val, batch_size=config["train"]["val_batch_size"]
+                )
 
-    in_channels = graphs_train[0].x.shape[1]
-    out_channels = 1 if len(graphs_train[0].y.shape) == 0 else len(graphs_train[0].y.shape)
+                in_channels = graphs_train[0].x.shape[1]
+                output_shape = graphs_train[0].y.shape
+                out_channels = 1 if len(output_shape) == 0 else len(output_shape)
 
+                for approach in results.keys():
+                    if approach == "only_original" and m_idx > 0:
+                        continue
 
-    # Train
+                    wandb.init(
+                        project=config["wandb"]["project"],
+                        entity=config["wandb"]["entity"],
+                        config=config,
+                        group=config["wandb"]["experiment_name"]
+                        + f"-using-approach-{approach}-original-and-{method}",
+                    )
+                    wandb.run.name = (
+                        config["wandb"]["experiment_name"]
+                        + f"-interleaving-original-and-{method}-run-{run_num}"
+                    )
 
-    print("Training a GIN model without rewiring...")
+                    model = GINModel(
+                        in_channels=in_channels,
+                        hidden_channels=config["model"]["hidden_channels"],
+                        num_layers=config["model"]["num_layers"],
+                        out_channels=out_channels,
+                        drop_prob=config["train"]["drop_prob"],
+                        only_original_graph=(approach == "only_original"),
+                        interleave_diff_graph=(approach == "interleave"),
+                        only_diff_graph=(approach == "only_diff"),
+                    ).to(device)
 
-    model = GINModel(in_channels=in_channels, hidden_channels=hidden_channels, num_layers=num_layers, out_channels=out_channels, drop_prob=drop_prob, interleave_diff_graph=False)
-    model.to(device)
+                    final_val_loss = train_eval_loop(
+                        model,
+                        dl_train,
+                        dl_val,
+                        lr=config["train"]["lr"],
+                        num_epochs=config["train"]["num_epochs"],
+                        print_every=config["train"]["print_every"],
+                        device=device,
+                        verbose=False,
+                    )
 
-    train_eval_loop(model, dl_train, dl_val, lr=lr, num_epochs=num_epochs, print_every=print_every)
+                    if approach == "only_original":
+                        results[approach].append(final_val_loss)
+                    else:
+                        results[approach][method].append(final_val_loss)
 
-    print("Training a GIN model with interleaved rewiring...")
+                    wandb.finish()
+                    pbar.update(1)
 
-    model = GINModel(in_channels=in_channels, hidden_channels=hidden_channels, num_layers=num_layers, out_channels=out_channels, drop_prob=drop_prob, interleave_diff_graph=True)
-    model.to(device)
+    with open("data/results/" + config["wandb"]["experiment_name"] + ".json", "w") as f:
+        json.dump(results, f)
 
-    train_eval_loop(model, dl_train, dl_val, lr=lr, num_epochs=num_epochs, print_every=print_every)
+    pprint(results)
 
+    # I process these to get the results table in playground.ipynb
 
 
 if __name__ == "__main__":
