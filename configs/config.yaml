@@ -1,5 +1,5 @@
 wandb:
-  experiment_name: 'table-of-runs'
+  experiment_name: 'EXPERIMENT_NAME'
   project: 'First runs'
   entity: 'commute_opt_gnn'
 
