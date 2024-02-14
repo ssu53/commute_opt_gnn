@@ -1,3 +1,5 @@
+import json
+import os
 from pprint import pprint
 
 import numpy as np
@@ -9,7 +11,6 @@ from tqdm import tqdm
 import wandb
 from generate_data import get_data_double_exp
 from models import GINModel
-import json
 
 
 def train_model(data, model, optimiser, loss_fn, device):
@@ -52,35 +53,23 @@ def train_eval_loop(
 
     epoch2valloss = {}
 
-    if verbose:
-        with tqdm(range(1, num_epochs + 1), unit="e") as tepoch:
-            for epoch in tepoch:
-                tepoch.set_description(f"Epoch {epoch}")
-                for data_train in data_loader_train:
-                    train_loss = train_model(
-                        data_train, model, optimiser, loss_fn, device
-                    )
-                if epoch % print_every == 0:
-                    val_loss = eval_model(data_loader_val, model, loss_fn)
-                    tepoch.set_postfix(train_loss=train_loss, val_loss=val_loss)
-                    epoch2valloss[epoch] = val_loss
-                    wandb.log({"train/loss": train_loss, "eval/loss": val_loss})
-                else:
-                    wandb.log({"train/loss": train_loss})
-        print(
-            f"Minimum validation loss was at epoch: {min(epoch2valloss, key=epoch2valloss.get)}, with loss: {min(epoch2valloss.values())}"
-        )
-    else:
-        for epoch in range(1, num_epochs + 1):
+    with tqdm(range(1, num_epochs + 1), unit="e", disable=not verbose) as tepoch:
+        for epoch in tepoch:
+            tepoch.set_description(f"Epoch {epoch}")
             for data_train in data_loader_train:
                 train_loss = train_model(data_train, model, optimiser, loss_fn, device)
             if epoch % print_every == 0:
                 val_loss = eval_model(data_loader_val, model, loss_fn)
+                tepoch.set_postfix(train_loss=train_loss, val_loss=val_loss)
+                epoch2valloss[epoch] = val_loss
                 wandb.log({"train/loss": train_loss, "eval/loss": val_loss})
             else:
                 wandb.log({"train/loss": train_loss})
+    print(
+        f"Minimum validation loss was at epoch: {min(epoch2valloss, key=epoch2valloss.get)}, with loss: {min(epoch2valloss.values())}"
+    )
 
-    return val_loss
+    return {"end": val_loss, "best": min(epoch2valloss.values())}
 
 
 def main():
@@ -88,6 +77,8 @@ def main():
         config = yaml.safe_load(f)
 
     pprint(config)
+
+    os.environ["WANDB_SILENT"] = str(config["run"]["silent"]).lower()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
@@ -112,7 +103,7 @@ def main():
         len(results["only_diff"].keys()) ** 2 - len(results["only_diff"].keys()) + 1
     )
 
-    with tqdm(total=num_runs) as pbar:
+    with tqdm(total=num_runs, disable=not config["run"]["silent"]) as pbar:
         for run_num, seed in enumerate(seeds):
             for m_idx, method in enumerate(results["only_diff"].keys()):
                 graphs_train, graphs_val = get_data_double_exp(
@@ -125,6 +116,7 @@ def main():
                     val_size=config["data"]["val_size"],
                     device=device,
                     seed=seed,
+                    verbose=not config["run"]["silent"],
                 )
 
                 # train_mean = np.mean([g.y.cpu() for g in graphs_train])
@@ -155,11 +147,11 @@ def main():
                         entity=config["wandb"]["entity"],
                         config=config,
                         group=config["wandb"]["experiment_name"]
-                        + f"-using-approach-{approach}-original-and-{method}",
+                        + f"-using-approach-{approach}-with-{method}",
                     )
                     wandb.run.name = (
                         config["wandb"]["experiment_name"]
-                        + f"-interleaving-original-and-{method}-run-{run_num}"
+                        + f"-using-approach-{approach}-with-{method}-run-{run_num}"
                     )
 
                     model = GINModel(
@@ -181,7 +173,7 @@ def main():
                         num_epochs=config["train"]["num_epochs"],
                         print_every=config["train"]["print_every"],
                         device=device,
-                        verbose=False,
+                        verbose=not config["run"]["silent"],
                     )
 
                     if approach == "only_original":

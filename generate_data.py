@@ -10,7 +10,7 @@ def get_data_double_exp(
     rewirer, train_size, val_size, c1, c2, c3, d, seed, device, verbose=False
 ):
     zinc_graphs_train = ZINC(
-        root="data_zinc",
+        root="data/data_zinc",
         subset=True,
         split="train",
     )
@@ -24,7 +24,11 @@ def get_data_double_exp(
     graphs_train = []
     graphs_val = []
 
-    for i in range(train_size if train_size != -1 else len(zinc_graphs_train)):
+    for i in tqdm(
+        range(train_size if train_size != -1 else len(zinc_graphs_train)),
+        desc="Generating training data",
+        disable=not verbose,
+    ):
         g = DoubleExp(
             id=i,
             data=zinc_graphs_train[i],
@@ -37,7 +41,11 @@ def get_data_double_exp(
         )
         graphs_train.append(g.to_torch_data().to(device))
 
-    for i in range(val_size if val_size != -1 else len(zinc_graphs_val)):
+    for i in tqdm(
+        range(val_size if val_size != -1 else len(zinc_graphs_val)),
+        desc="Generating validation data",
+        disable=not verbose,
+    ):
         g = DoubleExp(
             id=i,
             data=zinc_graphs_val[i],
@@ -54,12 +62,8 @@ def get_data_double_exp(
 
 
 def main():
-    # make_single_dummy()
-    # make_single_zinc()
-    # get_data()
     get_data_double_exp()
 
 
 if __name__ == "__main__":
     main()
-# %%

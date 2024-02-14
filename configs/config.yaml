@@ -1,6 +1,6 @@
 wandb:
-  experiment_name: 'EXPERIMENT_NAME'
-  project: 'First runs'
+  experiment_name: 'longer-run'
+  project: 'Second runs'
   entity: 'commute_opt_gnn'
 
 data:
@@ -8,17 +8,20 @@ data:
   c2: 0.3
   c3: 0.1
   d: 5
-  train_size: 1000
-  val_size: 100
+  train_size: 5000
+  val_size: 1000
 
 model:
   hidden_channels: 8
-  num_layers: 6
+  num_layers: 5
 
 train:
   lr: 0.001
   num_epochs: 200
   print_every: 10
-  train_batch_size: 32
-  val_batch_size: 32
+  train_batch_size: 512
+  val_batch_size: 512
   drop_prob: 0.0 
+
+run:
+  silent: True
