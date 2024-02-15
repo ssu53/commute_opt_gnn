@@ -5,3 +5,4 @@ torch
 einops
 torch-geometric
 matplotlib
+wandb
