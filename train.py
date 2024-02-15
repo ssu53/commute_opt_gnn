@@ -127,8 +127,6 @@ def main():
                 val_std = np.std([g.y.cpu() for g in graphs_val])
                 print(f"val targets: {val_mean:.2f} +/- {val_std:.3f}")
 
-                exit()
-
                 dl_train = DataLoader(
                     graphs_train, batch_size=config["train"]["train_batch_size"]
                 )
