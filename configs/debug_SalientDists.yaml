@@ -1,7 +1,7 @@
 data:
   c1: 0.7
   c2: 0.3
-  c3: 0.1
+  c3: 0.01
   d: 5
   train_size: 500
   val_size: 100

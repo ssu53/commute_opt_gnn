@@ -281,7 +281,8 @@ def run_experiment():
 
 def main():
     run_experiment()
-    # quick_run()
+    # quick_run("debug_SalientDists.yaml")
+    # quick_run("debug_ColourInteract.yaml")
 
 
 
