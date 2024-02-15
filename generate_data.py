@@ -5,6 +5,8 @@ from tqdm import tqdm
 
 from data import DoubleExp
 
+import numpy as np
+
 
 def get_data_double_exp(
     rewirer, train_size, val_size, c1, c2, c3, d, seed, device, verbose=False
@@ -24,6 +26,8 @@ def get_data_double_exp(
     graphs_train = []
     graphs_val = []
 
+    num_nodes_train = []
+
     for i in tqdm(
         range(train_size if train_size != -1 else len(zinc_graphs_train)),
         desc="Generating training data",
@@ -39,7 +43,14 @@ def get_data_double_exp(
             seed=seed,
             rewirer=rewirer,
         )
+
+        num_nodes_train.append(g.num_nodes)
+
         graphs_train.append(g.to_torch_data().to(device))
+
+    print("NUMBER OF NODES")
+
+    print(f"mean: {np.mean(num_nodes_train)}, std: {np.std(num_nodes_train)}")
 
     for i in tqdm(
         range(val_size if val_size != -1 else len(zinc_graphs_val)),

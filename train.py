@@ -76,7 +76,7 @@ def main():
     with open("configs/config.yaml", "r") as f:
         config = yaml.safe_load(f)
 
-    pprint(config)
+    print(config)
 
     os.environ["WANDB_SILENT"] = str(config["run"]["silent"]).lower()
 
@@ -119,13 +119,15 @@ def main():
                     verbose=not config["run"]["silent"],
                 )
 
-                # train_mean = np.mean([g.y.cpu() for g in graphs_train])
-                # train_std = np.std([g.y.cpu() for g in graphs_train])
-                # print(f"train targets: {train_mean:.2f} +/- {train_std:.3f}")
+                train_mean = np.mean([g.y.cpu() for g in graphs_train])
+                train_std = np.std([g.y.cpu() for g in graphs_train])
+                print(f"train targets: {train_mean:.2f} +/- {train_std:.3f}")
 
-                # val_mean = np.mean([g.y.cpu() for g in graphs_val])
-                # val_std = np.std([g.y.cpu() for g in graphs_val])
-                # print(f"val targets: {val_mean:.2f} +/- {val_std:.3f}")
+                val_mean = np.mean([g.y.cpu() for g in graphs_val])
+                val_std = np.std([g.y.cpu() for g in graphs_val])
+                print(f"val targets: {val_mean:.2f} +/- {val_std:.3f}")
+
+                exit()
 
                 dl_train = DataLoader(
                     graphs_train, batch_size=config["train"]["train_batch_size"]

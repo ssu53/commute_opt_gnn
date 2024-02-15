@@ -24,4 +24,4 @@ train:
   drop_prob: 0.0 
 
 run:
-  silent: True
+  silent: False
