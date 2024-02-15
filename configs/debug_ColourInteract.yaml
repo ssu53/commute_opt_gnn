@@ -1,0 +1,21 @@
+data:
+  c1: 0.7
+  c2: 0.3
+  num_colours: 8
+  train_size: 500
+  val_size: 100
+
+model:
+  hidden_channels: 8
+  num_layers: 5
+  drop_prob: 0.0
+
+train:
+  lr: 0.001
+  num_epochs: 100
+  print_every: 10
+  train_batch_size: 32
+  val_batch_size: 32
+
+run:
+  silent: False

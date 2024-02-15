@@ -9,7 +9,7 @@ from torch_geometric.loader import DataLoader
 from tqdm import tqdm
 
 import wandb
-from generate_data import get_data_double_exp
+from generate_data import get_data_SalientDists, get_data_ColourInteract
 from models import GINModel
 
 
@@ -81,17 +81,18 @@ def train_eval_loop(
 
 
 
-def quick_run():
+def quick_run(config_file="debug_ColourInteract.yaml"):
 
-    with open("configs/debug.yaml", "r") as f:
-        config = yaml.safe_load(f)
-
-    
     rewirer = "cayley"
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     seed = 42
+
+    with open(f"configs/{config_file}", "r") as f:
+        config = yaml.safe_load(f)
+    
     print(
         "CONFIGS\n", 
+        f"{config_file=}\n",
         f"{rewirer=}\n",
         f"{device=}\n",
         f"{seed=}\n",
@@ -101,17 +102,34 @@ def quick_run():
 
     # Get data
 
-    graphs_train, graphs_val = get_data_double_exp(
-        rewirer=rewirer, 
-        device=device, 
-        c1=config["data"]["c1"], 
-        c2=config["data"]["c2"], 
-        c3=config["data"]["c3"], 
-        d=config["data"]["d"], 
-        train_size=config["data"]["train_size"],
-        val_size=config["data"]["val_size"],
-        seed=seed,
-    )
+    if config_file == "debug_SalientDists.yaml":
+        graphs_train, graphs_val = get_data_SalientDists(
+            rewirer=rewirer, 
+            device=device, 
+            c1=config["data"]["c1"], 
+            c2=config["data"]["c2"], 
+            c3=config["data"]["c3"], 
+            d=config["data"]["d"], 
+            train_size=config["data"]["train_size"],
+            val_size=config["data"]["val_size"],
+            seed=seed,
+        )
+
+    elif config_file == "debug_ColourInteract.yaml":
+        graphs_train, graphs_val = get_data_ColourInteract(
+            rewirer=rewirer, 
+            device=device, 
+            c1=config["data"]["c1"], 
+            c2=config["data"]["c2"], 
+            num_colours=config["data"]["num_colours"], 
+            train_size=config["data"]["train_size"],
+            val_size=config["data"]["val_size"],
+            seed=seed,
+        )
+    
+    else:
+        raise NotImplementedError
+
 
     print(f"train targets: {np.mean([g.y.cpu() for g in graphs_train]):.2f} +/- {np.std([g.y.cpu() for g in graphs_train]):.3f}")
     print(f"val targets: {np.mean([g.y.cpu() for g in graphs_val]):.2f} +/- {np.std([g.y.cpu() for g in graphs_val]):.3f}")
@@ -175,7 +193,7 @@ def run_experiment():
     with tqdm(total=num_runs, disable=not config["run"]["silent"]) as pbar:
         for run_num, seed in enumerate(seeds):
             for m_idx, method in enumerate(results["only_diff"].keys()):
-                graphs_train, graphs_val = get_data_double_exp(
+                graphs_train, graphs_val = get_data_SalientDists(
                     rewirer=method,
                     c1=config["data"]["c1"],
                     c2=config["data"]["c2"],
