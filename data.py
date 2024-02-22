@@ -1,12 +1,12 @@
-import torch
-import einops
-from functools import partial
 import random
-import matplotlib.pyplot as plt
+from functools import partial
 
+import einops
+import matplotlib.pyplot as plt
 import networkx as nx
-from torch_geometric.utils import to_networkx
+import torch
 from torch_geometric.data import Data
+from torch_geometric.utils import to_networkx
 
 from generate_cayley_graph import CayleyGraphGenerator
 
@@ -59,7 +59,10 @@ class MyGraph:
     def attach_cayley(self):
         if self.num_nodes < 2:
             raise ValueError(
-                "Cayley graph requires at least 2 nodes, but got only {}.".format(self.num_nodes))
+                "Cayley graph requires at least 2 nodes, but got only {}.".format(
+                    self.num_nodes
+                )
+            )
         cg_gen = CayleyGraphGenerator(self.num_nodes)
         cg_gen.generate_cayley_graph()
         cg_gen.trim_graph()
@@ -92,9 +95,9 @@ class MyGraph:
 
 
 class ColourInteract(MyGraph):
-
-    def __init__(self, id, data, c1, c2, num_colours, x=None, y=None, seed=42, rewirer=None):
-
+    def __init__(
+        self, id, data, c1, c2, num_colours, x=None, y=None, seed=42, rewirer=None
+    ):
         super().__init__(id, data)
 
         torch.manual_seed(seed)
@@ -137,7 +140,8 @@ class ColourInteract(MyGraph):
             if self.colours is None:
                 self._set_colours()
             colours = torch.nn.functional.one_hot(
-                self.colours, num_classes=self.num_colours)
+                self.colours, num_classes=self.num_colours
+            )
             x = torch.hstack((self.values, colours))
             assert x.shape == (self.num_nodes, 1 + self.num_colours)
 
@@ -163,8 +167,7 @@ class ColourInteract(MyGraph):
 
             for node_i in range(self.num_nodes):
                 # we choose to avoid self-interactions
-                for node_j in range(node_i+1, self.num_nodes):
-
+                for node_j in range(node_i + 1, self.num_nodes):
                     interaction = torch.exp(
                         self.values[node_i] + self.values[node_j])
 
@@ -172,7 +175,7 @@ class ColourInteract(MyGraph):
                         y += self.c1 * interaction
 
                     y += self.c2 * \
-                        2**(-distances[node_i][node_j]) * interaction
+                        2 ** (-distances[node_i][node_j]) * interaction
 
             y = torch.tensor([y], dtype=torch.float)
 
@@ -185,7 +188,6 @@ class ColourInteract(MyGraph):
         self.data.edge_attr = None
 
     def attach_rewirer(self, rewirer):
-
         if rewirer is None:
             pass
         elif rewirer == "cayley":
@@ -210,7 +212,6 @@ class ColourInteract(MyGraph):
         )
 
     def attach_cayley_clusters(self):
-
         node_idx = 0
         graph = nx.Graph()
 
@@ -223,14 +224,17 @@ class ColourInteract(MyGraph):
                 cg_gen.trim_graph()
 
                 one_colour_cayley = nx.relabel_nodes(
-                    cg_gen.G_trimmed, dict(
-                        zip(cg_gen.G_trimmed, range(node_idx, node_idx+num_nodes)))
+                    cg_gen.G_trimmed,
+                    dict(zip(cg_gen.G_trimmed, range(
+                        node_idx, node_idx + num_nodes))),
                 )
 
                 # Add one random edge from one_colour cayley (which has indexes range(node_idx, node_idx+num_nodes) to the rest of the graph which has indexes range(0, node_idx)) using random.randint
                 if node_idx > 0:
                     one_colour_cayley.add_edge(
-                        random.randint(node_idx, node_idx+num_nodes-1), random.randint(0, node_idx-1))
+                        random.randint(node_idx, node_idx + num_nodes - 1),
+                        random.randint(0, node_idx - 1),
+                    )
 
                 node_idx += num_nodes
 
@@ -293,7 +297,9 @@ class SalientDists(MyGraph):
             y = 0
 
             for i in range(self.num_nodes):
-                for j in range(i+1, self.num_nodes):  # we choose to avoid self-interactions
+                for j in range(
+                    i + 1, self.num_nodes
+                ):  # we choose to avoid self-interactions
                     dist = distances[i][j]
 
                     if dist == 1:

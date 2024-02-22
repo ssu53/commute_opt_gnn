@@ -76,22 +76,25 @@ def train_eval_loop(
         f"Minimum validation loss at epoch {min(epoch2valloss, key=epoch2valloss.get)}: {min(epoch2valloss.values())}"
     )
 
-    print(
-        f"Final loss at epoch {num_epochs}: {min(epoch2valloss.values())}"
-    )
+    print(f"Final loss at epoch {num_epochs}: {min(epoch2valloss.values())}")
 
     if verbose:
         print("Train / Validation loss by epoch")
-        print("\n".join("{!r}: {:.3f} / {:.3f}".format(epoch,
-              epoch2trainloss[epoch], epoch2valloss[epoch]) for epoch in epoch2trainloss))
+        print(
+            "\n".join(
+                "{!r}: {:.3f} / {:.3f}".format(
+                    epoch, epoch2trainloss[epoch], epoch2valloss[epoch]
+                )
+                for epoch in epoch2trainloss
+            )
+        )
 
     end_results = {"end": val_loss, "best": min(epoch2valloss.values())}
     return end_results
 
 
 def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     seed = 42
 
     with open(f"configs/{config_file}", "r") as f:
@@ -123,7 +126,7 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
             train_size=config.data.train_size,
             val_size=config.data.val_size,
             seed=seed,
-            verbose=config.run.silent
+            verbose=config.run.silent,
         )
 
     elif config_file == "debug_ColourInteract.yaml":
@@ -140,16 +143,18 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
             train_size=config.data.train_size,
             val_size=config.data.val_size,
             seed=seed,
-            verbose=config.run.silent
+            verbose=config.run.silent,
         )
 
     else:
         raise NotImplementedError
 
     print(
-        f"train targets: {np.mean([g.y.cpu() for g in graphs_train[0]]):.2f} +/- {np.std([g.y.cpu() for g in graphs_train[0]]):.3f}")
+        f"train targets: {np.mean([g.y.cpu() for g in graphs_train[0]]):.2f} +/- {np.std([g.y.cpu() for g in graphs_train[0]]):.3f}"
+    )
     print(
-        f"val targets: {np.mean([g.y.cpu() for g in graphs_val[0]]):.2f} +/- {np.std([g.y.cpu() for g in graphs_val[0]]):.3f}")
+        f"val targets: {np.mean([g.y.cpu() for g in graphs_val[0]]):.2f} +/- {np.std([g.y.cpu() for g in graphs_val[0]]):.3f}"
+    )
 
     dl_train = DataLoader(
         graphs_train[0], batch_size=config.train.train_batch_size)
@@ -157,39 +162,72 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
 
     print(len(graphs_train))
     in_channels = graphs_train[0][0].x.shape[1]
-    out_channels = 1 if len(graphs_train[0][0].y.shape) == 0 else len(
-        graphs_train[0][0].y.shape)
+    out_channels = (
+        1 if len(graphs_train[0][0].y.shape) == 0 else len(
+            graphs_train[0][0].y.shape)
+    )
 
     print("-------------------")
     print("Training a GIN model without rewiring...")
 
-    model = GINModel(in_channels=in_channels, hidden_channels=config.model.hidden_channels, num_layers=config.model.num_layers,
-                     out_channels=out_channels, drop_prob=config.model.drop_prob, only_original_graph=True)
+    model = GINModel(
+        in_channels=in_channels,
+        hidden_channels=config.model.hidden_channels,
+        num_layers=config.model.num_layers,
+        out_channels=out_channels,
+        drop_prob=config.model.drop_prob,
+        only_original_graph=True,
+    )
     model.to(device)
 
-    train_eval_loop(model, dl_train, dl_val, lr=config.train.lr, num_epochs=config.train.num_epochs,
-                    print_every=config.train.print_every, verbose=True, log_wandb=False)
+    train_eval_loop(
+        model,
+        dl_train,
+        dl_val,
+        lr=config.train.lr,
+        num_epochs=config.train.num_epochs,
+        print_every=config.train.print_every,
+        verbose=True,
+        log_wandb=False,
+    )
 
     for num, rewirer in enumerate(rewirers):
         print("-------------------")
-        print(
-            f"Training a GIN model with interleaved rewiring using {rewirer}...")
+        print(f"Training a GIN model + interleaved {rewirer}...")
 
         dl_train = DataLoader(
-            graphs_train[num], batch_size=config.train.train_batch_size)
+            graphs_train[num], batch_size=config.train.train_batch_size
+        )
         dl_val = DataLoader(
             graphs_val[num], batch_size=config.train.val_batch_size)
 
         in_channels = graphs_train[num][0].x.shape[1]
-        out_channels = 1 if len(graphs_train[num][0].y.shape) == 0 else len(
-            graphs_train[num][0].y.shape)
+        out_channels = (
+            1
+            if len(graphs_train[num][0].y.shape) == 0
+            else len(graphs_train[num][0].y.shape)
+        )
 
-        model = GINModel(in_channels=in_channels, hidden_channels=config.model.hidden_channels, num_layers=config.model.num_layers,
-                         out_channels=out_channels, drop_prob=config.model.drop_prob, interleave_diff_graph=True)
+        model = GINModel(
+            in_channels=in_channels,
+            hidden_channels=config.model.hidden_channels,
+            num_layers=config.model.num_layers,
+            out_channels=out_channels,
+            drop_prob=config.model.drop_prob,
+            interleave_diff_graph=True,
+        )
         model.to(device)
 
-        train_eval_loop(model, dl_train, dl_val, lr=config.train.lr, num_epochs=config.train.num_epochs,
-                        print_every=config.train.print_every, verbose=True, log_wandb=False)
+        train_eval_loop(
+            model,
+            dl_train,
+            dl_val,
+            lr=config.train.lr,
+            num_epochs=config.train.num_epochs,
+            print_every=config.train.print_every,
+            verbose=True,
+            log_wandb=False,
+        )
 
 
 def run_experiment():
@@ -253,8 +291,7 @@ def run_experiment():
                     graphs_train, batch_size=config.train.train_batch_size
                 )
                 dl_val = DataLoader(
-                    graphs_val, batch_size=config.train.val_batch_size
-                )
+                    graphs_val, batch_size=config.train.val_batch_size)
 
                 in_channels = graphs_train[0].x.shape[1]
                 output_shape = graphs_train[0].y.shape
@@ -318,8 +355,9 @@ def main():
     # run_experiment()
     # quick_run(["cayley", "fully_connected", "interacting_pairs"],
     #           "debug_SalientDists.yaml")
-    quick_run(["cayley", "fully_connected", "cayley_clusters"],
-              "debug_ColourInteract.yaml")
+    quick_run(
+        ["cayley", "fully_connected", "cayley_clusters"], "debug_ColourInteract.yaml"
+    )
 
 
 if __name__ == "__main__":

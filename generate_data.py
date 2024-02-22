@@ -10,9 +10,21 @@ import networkx as nx
 
 
 def get_data_SalientDists(
-    rewirers: list, dataset: str, train_size, val_size, c1, c2, c3, d, min_train_nodes, max_train_nodes, max_val_nodes, seed, device, verbose=False
+    rewirers: list,
+    dataset: str,
+    train_size,
+    val_size,
+    c1,
+    c2,
+    c3,
+    d,
+    min_train_nodes,
+    max_train_nodes,
+    max_val_nodes,
+    seed,
+    device,
+    verbose=False,
 ):
-
     print("Loading data...")
     if dataset == "ZINC":
         all_graphs_train = ZINC(
@@ -48,10 +60,15 @@ def get_data_SalientDists(
     print("Preprocessing data...")
 
     for num, rewirer in enumerate(rewirers):
-        pbar = tqdm(total=train_size,
-                    desc=f"Generating training data for {rewirer}", disable=verbose)
+        pbar = tqdm(
+            total=train_size,
+            desc=f"Generating training data for {rewirer}",
+            disable=verbose,
+        )
         for i in range(len(all_graphs_train)):
-            if len(graphs_train[num]) < train_size and nx.is_connected(to_networkx(all_graphs_train[i], to_undirected=True)):
+            if len(graphs_train[num]) < train_size and nx.is_connected(
+                to_networkx(all_graphs_train[i], to_undirected=True)
+            ):
                 g = SalientDists(
                     id=i,
                     data=all_graphs_train[i],
@@ -62,7 +79,11 @@ def get_data_SalientDists(
                     seed=seed,
                     rewirer=rewirer,
                 )
-                if g.num_nodes > min_train_nodes and g.num_nodes < max_train_nodes and nx.diameter(to_networkx(g.data, to_undirected=True)) > d:
+                if (
+                    g.num_nodes > min_train_nodes
+                    and g.num_nodes < max_train_nodes
+                    and nx.diameter(to_networkx(g.data, to_undirected=True)) > d
+                ):
                     graphs_train[num].append(g.to_torch_data().to(device))
                     num_nodes_train.append(g.num_nodes)
                     pbar.update(1)
@@ -71,13 +92,19 @@ def get_data_SalientDists(
 
         print(f"Num nodes for {rewirer}")
         print(
-            f"mean: {np.mean(num_nodes_train)}, std: {np.std(num_nodes_train)}, max: {np.max(num_nodes_train)}")
+            f"mean: {np.mean(num_nodes_train)}, std: {np.std(num_nodes_train)}, max: {np.max(num_nodes_train)}"
+        )
 
     for num, rewirer in enumerate(rewirers):
-        pbar = tqdm(total=val_size,
-                    desc=f"Generating validation data for {rewirer}", disable=verbose)
+        pbar = tqdm(
+            total=val_size,
+            desc=f"Generating validation data for {rewirer}",
+            disable=verbose,
+        )
         for i in range(len(all_graphs_val)):
-            if len(graphs_val[num]) < val_size and nx.is_connected(to_networkx(all_graphs_val[i], to_undirected=True)):
+            if len(graphs_val[num]) < val_size and nx.is_connected(
+                to_networkx(all_graphs_val[i], to_undirected=True)
+            ):
                 g = SalientDists(
                     id=i,
                     data=all_graphs_val[i],
@@ -88,24 +115,40 @@ def get_data_SalientDists(
                     seed=seed,
                     rewirer=rewirer,
                 )
-                if g.num_nodes < max_val_nodes and nx.diameter(to_networkx(g.data, to_undirected=True)) > d:
-
+                if (
+                    g.num_nodes < max_val_nodes
+                    and nx.diameter(to_networkx(g.data, to_undirected=True)) > d
+                ):
                     graphs_val[num].append(g.to_torch_data().to(device))
                     num_nodes_val.append(g.num_nodes)
                     pbar.update(1)
 
         print(f"Num nodes for {rewirer}")
         print(
-            f"mean: {np.mean(num_nodes_val)}, std: {np.std(num_nodes_val)}, min: {np.min(num_nodes_val)}")
+            f"mean: {np.mean(num_nodes_val)}, std: {np.std(num_nodes_val)}, min: {np.min(num_nodes_val)}"
+        )
 
-        assert len(
-            graphs_val[num]) == val_size, f"len(graphs_val[{num}]) = {len(graphs_val[num])}, val_size = {val_size}"
+        assert (
+            len(graphs_val[num]) == val_size
+        ), f"len(graphs_val[{num}]) = {len(graphs_val[num])}, val_size = {val_size}"
 
     return graphs_train, graphs_val
 
 
 def get_data_ColourInteract(
-    dataset, rewirers, train_size, val_size, c1, c2, num_colours, min_train_nodes, max_train_nodes, max_val_nodes, seed, device, verbose=False
+    dataset,
+    rewirers,
+    train_size,
+    val_size,
+    c1,
+    c2,
+    num_colours,
+    min_train_nodes,
+    max_train_nodes,
+    max_val_nodes,
+    seed,
+    device,
+    verbose=False,
 ):
     print("Loading data...")
     if dataset == "ZINC":
@@ -139,10 +182,15 @@ def get_data_ColourInteract(
     num_nodes_train = []
 
     for num, rewirer in enumerate(rewirers):
-        pbar = tqdm(total=train_size,
-                    desc=f"Generating training data for {rewirer}", disable=verbose)
+        pbar = tqdm(
+            total=train_size,
+            desc=f"Generating training data for {rewirer}",
+            disable=verbose,
+        )
         for i in range(len(all_graphs_train)):
-            if len(graphs_train[num]) < train_size and nx.is_connected(to_networkx(all_graphs_train[i], to_undirected=True)):
+            if len(graphs_train[num]) < train_size and nx.is_connected(
+                to_networkx(all_graphs_train[i], to_undirected=True)
+            ):
                 g = ColourInteract(
                     id=i,
                     data=all_graphs_train[i],
@@ -159,11 +207,15 @@ def get_data_ColourInteract(
 
         num_nodes_train.append(g.num_nodes)
     for num, rewirer in enumerate(rewirers):
-        pbar = tqdm(total=train_size,
-                    desc=f"Generating validation data for {rewirer}", disable=verbose)
+        pbar = tqdm(
+            total=train_size,
+            desc=f"Generating validation data for {rewirer}",
+            disable=verbose,
+        )
         for i in range(len(all_graphs_val)):
-            if len(graphs_val[num]) < val_size and nx.is_connected(to_networkx(all_graphs_val[i], to_undirected=True)):
-
+            if len(graphs_val[num]) < val_size and nx.is_connected(
+                to_networkx(all_graphs_val[i], to_undirected=True)
+            ):
                 g = ColourInteract(
                     id=i,
                     data=all_graphs_val[i],
@@ -181,7 +233,6 @@ def get_data_ColourInteract(
 
 
 def main():
-
     print("Getting small sample of SalientDists...")
 
     graphs_train, graphs_val = get_data_SalientDists(
@@ -200,9 +251,11 @@ def main():
     print([g.y.cpu() for g in graphs_val])
 
     print(
-        f"train targets: {np.mean([g.y.cpu() for g in graphs_train]):.2f} +/- {np.std([g.y.cpu() for g in graphs_train]):.3f}")
+        f"train targets: {np.mean([g.y.cpu() for g in graphs_train]):.2f} +/- {np.std([g.y.cpu() for g in graphs_train]):.3f}"
+    )
     print(
-        f"val targets: {np.mean([g.y.cpu() for g in graphs_val]):.2f} +/- {np.std([g.y.cpu() for g in graphs_val]):.3f}")
+        f"val targets: {np.mean([g.y.cpu() for g in graphs_val]):.2f} +/- {np.std([g.y.cpu() for g in graphs_val]):.3f}"
+    )
 
     print("Getting small sample of ColourInteract...")
 
@@ -218,9 +271,11 @@ def main():
     )
 
     print(
-        f"train targets: {np.mean([g.y.cpu() for g in graphs_train]):.2f} +/- {np.std([g.y.cpu() for g in graphs_train]):.3f}")
+        f"train targets: {np.mean([g.y.cpu() for g in graphs_train]):.2f} +/- {np.std([g.y.cpu() for g in graphs_train]):.3f}"
+    )
     print(
-        f"val targets: {np.mean([g.y.cpu() for g in graphs_val]):.2f} +/- {np.std([g.y.cpu() for g in graphs_val]):.3f}")
+        f"val targets: {np.mean([g.y.cpu() for g in graphs_val]):.2f} +/- {np.std([g.y.cpu() for g in graphs_val]):.3f}"
+    )
 
 
 if __name__ == "__main__":

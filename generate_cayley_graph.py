@@ -17,7 +17,10 @@ class CayleyGraphGenerator:
         self.V = V
         self.n = self._find_n()
 
-        self.gen_set = [np.array([[1, 1], [0, 1]]), np.array([[1, 0], [1, 1]])] # page 5
+        self.gen_set = [
+            np.array([[1, 1], [0, 1]]),
+            np.array([[1, 0], [1, 1]]),
+        ]  # page 5
         self.dimension = self.gen_set[0].shape[0]
 
         self.adj_matrix = None
@@ -32,7 +35,8 @@ class CayleyGraphGenerator:
         """
         n = 1
         while True:
-            size = n**3 * np.prod([1 - 1 / p**2 for p in self._prime_factors(n)])
+            size = n**3 * \
+                np.prod([1 - 1 / p**2 for p in self._prime_factors(n)])
             if size >= self.V:
                 return n
             n += 1
