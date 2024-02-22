@@ -1,9 +1,13 @@
 data:
+  dataset : 'LRGB'
   c1: 0.7
   c2: 0.3
-  num_colours: 8
-  train_size: 500
-  val_size: 100
+  num_colours: 4
+  train_size: 100
+  val_size: 50
+  min_train_nodes: 100
+  max_train_nodes: 200
+  max_val_nodes: 300
 
 model:
   hidden_channels: 8

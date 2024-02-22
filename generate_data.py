@@ -1,25 +1,43 @@
 import numpy as np
 import torch
 from torch_geometric.datasets import ZINC
+from torch_geometric.datasets import LRGBDataset
 from tqdm import tqdm
 
 from data import ColourInteract, SalientDists
+from torch_geometric.utils import to_networkx
+import networkx as nx
 
 
 def get_data_SalientDists(
-    rewirers: list, train_size, val_size, c1, c2, c3, d, train_test_size_boundary, seed, device, verbose=False
+    rewirers: list, dataset: str, train_size, val_size, c1, c2, c3, d, min_train_nodes, max_train_nodes, max_val_nodes, seed, device, verbose=False
 ):
-    zinc_graphs_train = ZINC(
-        root="data/data_zinc",
-        subset=True,
-        split="train",
-    )
 
-    zinc_graphs_val = ZINC(
-        root="data/data_zinc",
-        subset=True,
-        split="val",
-    )
+    print("Loading data...")
+    if dataset == "ZINC":
+        all_graphs_train = ZINC(
+            root="data/data_zinc",
+            subset=True,
+            split="train",
+        )
+
+        all_graphs_val = ZINC(
+            root="data/data_zinc",
+            subset=True,
+            split="val",
+        )
+    elif dataset == "LRGB":
+        all_graphs_train = LRGBDataset(
+            root="data/data_lrgb",
+            name="Peptides-struct",
+            split="train",
+        )
+
+        all_graphs_val = LRGBDataset(
+            root="data/data_lrgb",
+            name="Peptides-struct",
+            split="val",
+        )
 
     graphs_train = [[] for _ in rewirers]
     graphs_val = [[] for _ in rewirers]
@@ -27,17 +45,16 @@ def get_data_SalientDists(
     num_nodes_train = []
     num_nodes_val = []
 
-    for num, rewirer in enumerate(rewirers):
+    print("Preprocessing data...")
 
-        for i in tqdm(
-            range(len(zinc_graphs_train)),
-            desc="Generating training data",
-            disable=not verbose,
-        ):
-            if len(graphs_train[num]) < train_size:
+    for num, rewirer in enumerate(rewirers):
+        pbar = tqdm(total=train_size,
+                    desc=f"Generating training data for {rewirer}", disable=verbose)
+        for i in range(len(all_graphs_train)):
+            if len(graphs_train[num]) < train_size and nx.is_connected(to_networkx(all_graphs_train[i], to_undirected=True)):
                 g = SalientDists(
                     id=i,
-                    data=zinc_graphs_train[i],
+                    data=all_graphs_train[i],
                     c1=c1,
                     c2=c2,
                     c3=c3,
@@ -45,9 +62,10 @@ def get_data_SalientDists(
                     seed=seed,
                     rewirer=rewirer,
                 )
-                if g.num_nodes < train_test_size_boundary:
+                if g.num_nodes > min_train_nodes and g.num_nodes < max_train_nodes and nx.diameter(to_networkx(g.data, to_undirected=True)) > d:
                     graphs_train[num].append(g.to_torch_data().to(device))
                     num_nodes_train.append(g.num_nodes)
+                    pbar.update(1)
 
         assert len(graphs_train[num]) == train_size
 
@@ -56,15 +74,13 @@ def get_data_SalientDists(
             f"mean: {np.mean(num_nodes_train)}, std: {np.std(num_nodes_train)}, max: {np.max(num_nodes_train)}")
 
     for num, rewirer in enumerate(rewirers):
-        for i in tqdm(
-            range(len(zinc_graphs_train)),
-            desc="Generating validation data",
-            disable=not verbose,
-        ):
-            if len(graphs_val[num]) < val_size:
+        pbar = tqdm(total=val_size,
+                    desc=f"Generating validation data for {rewirer}", disable=verbose)
+        for i in range(len(all_graphs_val)):
+            if len(graphs_val[num]) < val_size and nx.is_connected(to_networkx(all_graphs_val[i], to_undirected=True)):
                 g = SalientDists(
                     id=i,
-                    data=zinc_graphs_train[i],
+                    data=all_graphs_val[i],
                     c1=c1,
                     c2=c2,
                     c3=c3,
@@ -72,10 +88,11 @@ def get_data_SalientDists(
                     seed=seed,
                     rewirer=rewirer,
                 )
-                if g.num_nodes >= train_test_size_boundary:
+                if g.num_nodes < max_val_nodes and nx.diameter(to_networkx(g.data, to_undirected=True)) > d:
 
                     graphs_val[num].append(g.to_torch_data().to(device))
                     num_nodes_val.append(g.num_nodes)
+                    pbar.update(1)
 
         print(f"Num nodes for {rewirer}")
         print(
@@ -88,63 +105,77 @@ def get_data_SalientDists(
 
 
 def get_data_ColourInteract(
-    rewirers, train_size, val_size, c1, c2, num_colours, seed, device, verbose=False
+    dataset, rewirers, train_size, val_size, c1, c2, num_colours, min_train_nodes, max_train_nodes, max_val_nodes, seed, device, verbose=False
 ):
-    zinc_graphs_train = ZINC(
-        root="data/data_zinc",
-        subset=True,
-        split="train",
-    )
+    print("Loading data...")
+    if dataset == "ZINC":
+        all_graphs_train = ZINC(
+            root="data/data_zinc",
+            subset=True,
+            split="train",
+        )
 
-    zinc_graphs_val = ZINC(
-        root="data/data_zinc",
-        subset=True,
-        split="val",
-    )
+        all_graphs_val = ZINC(
+            root="data/data_zinc",
+            subset=True,
+            split="val",
+        )
+    elif dataset == "LRGB":
+        all_graphs_train = LRGBDataset(
+            root="data/data_lrgb",
+            name="Peptides-struct",
+            split="train",
+        )
+
+        all_graphs_val = LRGBDataset(
+            root="data/data_lrgb",
+            name="Peptides-struct",
+            split="val",
+        )
 
     graphs_train = [[] for _ in rewirers]
     graphs_val = [[] for _ in rewirers]
 
     num_nodes_train = []
 
-    for i in tqdm(
-        range(train_size if train_size != -1 else len(zinc_graphs_train)),
-        desc="Generating training data",
-        disable=not verbose,
-    ):
-        for num, rewirer in enumerate(rewirers):
+    for num, rewirer in enumerate(rewirers):
+        pbar = tqdm(total=train_size,
+                    desc=f"Generating training data for {rewirer}", disable=verbose)
+        for i in range(len(all_graphs_train)):
+            if len(graphs_train[num]) < train_size and nx.is_connected(to_networkx(all_graphs_train[i], to_undirected=True)):
+                g = ColourInteract(
+                    id=i,
+                    data=all_graphs_train[i],
+                    c1=c1,
+                    c2=c2,
+                    num_colours=num_colours,
+                    seed=seed,
+                    rewirer=rewirer,
+                )
 
-            g = ColourInteract(
-                id=i,
-                data=zinc_graphs_train[i],
-                c1=c1,
-                c2=c2,
-                num_colours=num_colours,
-                seed=seed,
-                rewirer=rewirer,
-            )
-
-            graphs_train[num].append(g.to_torch_data().to(device))
+                if g.num_nodes > min_train_nodes and g.num_nodes < max_train_nodes:
+                    graphs_train[num].append(g.to_torch_data().to(device))
+                    pbar.update(1)
 
         num_nodes_train.append(g.num_nodes)
+    for num, rewirer in enumerate(rewirers):
+        pbar = tqdm(total=train_size,
+                    desc=f"Generating validation data for {rewirer}", disable=verbose)
+        for i in range(len(all_graphs_val)):
+            if len(graphs_val[num]) < val_size and nx.is_connected(to_networkx(all_graphs_val[i], to_undirected=True)):
 
-    for i in tqdm(
-        range(val_size if val_size != -1 else len(zinc_graphs_val)),
-        desc="Generating validation data",
-        disable=not verbose,
-    ):
-        num_nodes_train.append(g.num_nodes)
-
-        g = ColourInteract(
-            id=i,
-            data=zinc_graphs_val[i],
-            c1=c1,
-            c2=c2,
-            num_colours=num_colours,
-            seed=seed,
-            rewirer=rewirer,
-        )
-        graphs_val[num].append(g.to_torch_data().to(device))
+                g = ColourInteract(
+                    id=i,
+                    data=all_graphs_val[i],
+                    c1=c1,
+                    c2=c2,
+                    num_colours=num_colours,
+                    seed=seed,
+                    rewirer=rewirer,
+                )
+                if g.num_nodes < max_val_nodes:
+                    graphs_val[num].append(g.to_torch_data().to(device))
+                    pbar.update(1)
 
     return graphs_train, graphs_val
 

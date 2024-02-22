@@ -89,9 +89,8 @@ def train_eval_loop(
     return end_results
 
 
-def quick_run(config_file="debug_ColourInteract.yaml"):
+def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
 
-    rewirers = ["cayley", "interacting_pairs", "fully_connected"]
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     seed = 42
 
@@ -112,27 +111,36 @@ def quick_run(config_file="debug_ColourInteract.yaml"):
     if config_file == "debug_SalientDists.yaml":
         graphs_train, graphs_val = get_data_SalientDists(
             rewirers=rewirers,
+            dataset=config.data.dataset,
             device=device,
             c1=config.data.c1,
             c2=config.data.c2,
             c3=config.data.c3,
             d=config.data.d,
-            train_test_size_boundary=config.data.train_test_size_boundary,
+            min_train_nodes=config.data.min_train_nodes,
+            max_train_nodes=config.data.max_train_nodes,
+            max_val_nodes=config.data.max_val_nodes,
             train_size=config.data.train_size,
             val_size=config.data.val_size,
             seed=seed,
+            verbose=config.run.silent
         )
 
     elif config_file == "debug_ColourInteract.yaml":
         graphs_train, graphs_val = get_data_ColourInteract(
             rewirers=rewirers,
+            dataset=config.data.dataset,
             device=device,
             c1=config.data.c1,
             c2=config.data.c2,
             num_colours=config.data.num_colours,
+            min_train_nodes=config.data.min_train_nodes,
+            max_train_nodes=config.data.max_train_nodes,
+            max_val_nodes=config.data.max_val_nodes,
             train_size=config.data.train_size,
             val_size=config.data.val_size,
             seed=seed,
+            verbose=config.run.silent
         )
 
     else:
@@ -308,8 +316,10 @@ def run_experiment():
 
 def main():
     # run_experiment()
-    quick_run("debug_SalientDists.yaml")
-    # quick_run("debug_ColourInteract.yaml")
+    # quick_run(["cayley", "fully_connected", "interacting_pairs"],
+    #           "debug_SalientDists.yaml")
+    quick_run(["cayley", "fully_connected", "cayley_clusters"],
+              "debug_ColourInteract.yaml")
 
 
 if __name__ == "__main__":

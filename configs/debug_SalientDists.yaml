@@ -1,12 +1,15 @@
 data:
+  dataset : 'LRGB'
   c1: 0.7
   c2: 0.3
   c3: 0.01
   d: 5
   train_size: 500
   val_size: 100
-  train_test_size_boundary: 30
-
+  min_train_nodes: 20
+  max_train_nodes: 30
+  max_val_nodes: 40
+  
 model:
   hidden_channels: 8
   num_layers: 5

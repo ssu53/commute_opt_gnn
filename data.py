@@ -2,6 +2,7 @@ import torch
 import einops
 from functools import partial
 import random
+import matplotlib.pyplot as plt
 
 import networkx as nx
 from torch_geometric.utils import to_networkx
@@ -56,12 +57,16 @@ class MyGraph:
         return nx.draw(g, pos=layout(g), with_labels=with_labels)
 
     def attach_cayley(self):
+        if self.num_nodes < 2:
+            raise ValueError(
+                "Cayley graph requires at least 2 nodes, but got only {}.".format(self.num_nodes))
         cg_gen = CayleyGraphGenerator(self.num_nodes)
         cg_gen.generate_cayley_graph()
         cg_gen.trim_graph()
 
         rewire_edge_index = nx.relabel_nodes(
-            cg_gen.G_trimmed, dict(zip(cg_gen.G_trimmed, range(self.num_nodes)))
+            cg_gen.G_trimmed, dict(
+                zip(cg_gen.G_trimmed, range(self.num_nodes)))
         )
 
         rewire_edge_index = einops.rearrange(
@@ -73,18 +78,17 @@ class MyGraph:
 
     def attach_fully_connected(self):
         rewire_edge_index = [
-                (i, j)
-                for i in range(self.num_nodes)
-                for j in range(self.num_nodes)
-                if i != j
-            ]
+            (i, j)
+            for i in range(self.num_nodes)
+            for j in range(self.num_nodes)
+            if i != j
+        ]
 
         rewire_edge_index = einops.rearrange(
             torch.tensor(rewire_edge_index), "e n -> n e"
         )
 
         self.rewire_edge_index = rewire_edge_index
-
 
 
 class ColourInteract(MyGraph):
@@ -106,8 +110,7 @@ class ColourInteract(MyGraph):
         self._set_x(x)
         self._set_y(y)
         self.attach_rewirer(rewirer)
-    
-    
+
     def _set_values(self):
         """
         set one-dimensional "values", drawn uniformly from the unit interval
@@ -115,25 +118,29 @@ class ColourInteract(MyGraph):
         num_nodes, dim_feat = self.num_nodes, 1
         values = torch.rand((num_nodes, dim_feat))
         self.values = values
-    
+
     def _set_colours(self):
         """
         set categorical "colours", uniformly from a set of self.size num_colours
         """
-        colours = torch.randint(low=0, high=self.num_colours, size=(self.num_nodes,))
+        colours = torch.randint(
+            low=0, high=self.num_colours, size=(self.num_nodes,))
         self.colours = colours
-    
+
     def _set_x(self, x):
         """
         set features as the concatenation of "values" and "colours"
         """
         if x is None:
-            if self.values is None: self._set_values()
-            if self.colours is None: self._set_colours()
-            colours = torch.nn.functional.one_hot(self.colours, num_classes=self.num_colours)
+            if self.values is None:
+                self._set_values()
+            if self.colours is None:
+                self._set_colours()
+            colours = torch.nn.functional.one_hot(
+                self.colours, num_classes=self.num_colours)
             x = torch.hstack((self.values, colours))
             assert x.shape == (self.num_nodes, 1 + self.num_colours)
-    
+
         self.data.x = x
 
     def _set_y(self, y):
@@ -155,17 +162,20 @@ class ColourInteract(MyGraph):
             y = 0.0
 
             for node_i in range(self.num_nodes):
-                for node_j in range(node_i+1, self.num_nodes): # we choose to avoid self-interactions
+                # we choose to avoid self-interactions
+                for node_j in range(node_i+1, self.num_nodes):
 
-                    interaction = torch.exp(self.values[node_i] + self.values[node_j])
-                    
+                    interaction = torch.exp(
+                        self.values[node_i] + self.values[node_j])
+
                     if self.colours[node_i].item() == self.colours[node_j].item():
                         y += self.c1 * interaction
-                    
-                    y += self.c2 * 2**(-distances[node_i][node_j]) * interaction
-            
+
+                    y += self.c2 * \
+                        2**(-distances[node_i][node_j]) * interaction
+
             y = torch.tensor([y], dtype=torch.float)
-        
+
         self.data.y = y
 
     def _set_edge_attr(self):
@@ -173,21 +183,20 @@ class ColourInteract(MyGraph):
         we are not concerned with edge attributes in this synthetic dataset
         """
         self.data.edge_attr = None
-    
+
     def attach_rewirer(self, rewirer):
 
         if rewirer is None:
             pass
-
         elif rewirer == "cayley":
             self.attach_cayley()
-        
         elif rewirer == "fully_connected":
-            self.attach_fullyconnected()
-        
+            self.attach_fully_connected()
+        elif rewirer == "cayley_clusters":
+            self.attach_cayley_clusters()
         else:
             raise NotImplementedError
-    
+
     def to_torch_data(self):
         """
         casts to the usual torch Data object
@@ -200,6 +209,43 @@ class ColourInteract(MyGraph):
             id=self.id,
         )
 
+    def attach_cayley_clusters(self):
+
+        node_idx = 0
+        graph = nx.Graph()
+
+        for colour in range(self.num_colours):
+            num_nodes = (self.colours == colour).sum().item()
+
+            if num_nodes > 1:
+                cg_gen = CayleyGraphGenerator(num_nodes)
+                cg_gen.generate_cayley_graph()
+                cg_gen.trim_graph()
+
+                one_colour_cayley = nx.relabel_nodes(
+                    cg_gen.G_trimmed, dict(
+                        zip(cg_gen.G_trimmed, range(node_idx, node_idx+num_nodes)))
+                )
+
+                # Add one random edge from one_colour cayley (which has indexes range(node_idx, node_idx+num_nodes) to the rest of the graph which has indexes range(0, node_idx)) using random.randint
+                if node_idx > 0:
+                    one_colour_cayley.add_edge(
+                        random.randint(node_idx, node_idx+num_nodes-1), random.randint(0, node_idx-1))
+
+                node_idx += num_nodes
+
+                graph = nx.compose(graph, one_colour_cayley)
+
+        # nx.draw(graph, node_size=50)
+        # plt.savefig("test.png")
+        # exit()
+
+        rewire_edge_index = einops.rearrange(
+            torch.tensor(list(graph.edges)),
+            "e n -> n e",
+        )
+
+        self.rewire_edge_index = rewire_edge_index
 
 
 class SalientDists(MyGraph):
@@ -247,15 +293,18 @@ class SalientDists(MyGraph):
             y = 0
 
             for i in range(self.num_nodes):
-                for j in range(i+1, self.num_nodes): # we choose to avoid self-interactions
+                for j in range(i+1, self.num_nodes):  # we choose to avoid self-interactions
                     dist = distances[i][j]
-                    
+
                     if dist == 1:
-                        y += self.c1 * torch.exp(self.data.x[i] + self.data.x[j])
+                        y += self.c1 * \
+                            torch.exp(self.data.x[i] + self.data.x[j])
                     elif dist == self.d:
-                        y += self.c2 * torch.exp(self.data.x[i] + self.data.x[j])
+                        y += self.c2 * \
+                            torch.exp(self.data.x[i] + self.data.x[j])
                     else:
-                        y += self.c3 * torch.exp(self.data.x[i] + self.data.x[j])
+                        y += self.c3 * \
+                            torch.exp(self.data.x[i] + self.data.x[j])
 
             y = torch.tensor([y], dtype=torch.float)
 
@@ -273,7 +322,7 @@ class SalientDists(MyGraph):
 
         elif rewirer == "cayley":
             self.attach_cayley()
-        
+
         elif rewirer == "interacting_pairs":
             rewire_edge_index = []
 
@@ -286,10 +335,10 @@ class SalientDists(MyGraph):
                 torch.tensor(rewire_edge_index), "e n -> n e"
             )
             self.rewire_edge_index = rewire_edge_index
-        
+
         elif rewirer == "fully_connected":
             self.attach_fully_connected()
-        
+
         else:
             raise NotImplementedError
 

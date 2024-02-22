@@ -10,6 +10,7 @@ data:
   d: 5
   train_size: 5000
   val_size: 1000
+  train_test_size_boundary: 30
 
 model:
   hidden_channels: 8
