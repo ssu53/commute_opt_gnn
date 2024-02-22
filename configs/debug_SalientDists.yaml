@@ -5,6 +5,7 @@ data:
   d: 5
   train_size: 500
   val_size: 100
+  train_test_size_boundary: 30
 
 model:
   hidden_channels: 8
@@ -13,7 +14,7 @@ model:
 
 train:
   lr: 0.001
-  num_epochs: 100
+  num_epochs: 200
   print_every: 10
   train_batch_size: 32
   val_batch_size: 32

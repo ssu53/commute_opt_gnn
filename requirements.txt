@@ -6,3 +6,4 @@ einops
 torch-geometric
 matplotlib
 wandb
+easydict
