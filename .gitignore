@@ -1,2 +1,6 @@
 **/__pycache__/
 data_zinc
+l65-env/
+wandb/
+data/
+.vscode/launch.json
