@@ -4,6 +4,7 @@ from functools import partial
 import einops
 import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 import torch
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
@@ -96,7 +97,7 @@ class MyGraph:
 
 class ColourInteract(MyGraph):
     def __init__(
-        self, id, data, c1, c2, num_colours, x=None, y=None, seed=42, rewirer=None
+        self, id, data, c1, c2, num_colours, distances, x=None, y=None, seed=42, rewirer=None
     ):
         super().__init__(id, data)
 
@@ -109,6 +110,11 @@ class ColourInteract(MyGraph):
 
         self.values = None
         self.colours = None
+
+        if distances is None:
+            self.distances = None
+        else:
+            self.distances = distances
 
         self._set_x(x)
         self._set_y(y)
@@ -160,8 +166,9 @@ class ColourInteract(MyGraph):
 
         if y is None:
             g = to_networkx(self.data, to_undirected=True)
-            distances = dict(nx.all_pairs_shortest_path_length(g))
-            self.distances = distances
+
+            if self.distances is None:
+                self.distances = dict(nx.all_pairs_shortest_path_length(g))
 
             y = 0.0
 
@@ -175,7 +182,7 @@ class ColourInteract(MyGraph):
                         y += self.c1 * interaction
 
                     y += self.c2 * \
-                        2 ** (-distances[node_i][node_j]) * interaction
+                        2 ** (-self.distances[node_i][node_j]) * interaction
 
             y = torch.tensor([y], dtype=torch.float)
 
@@ -253,7 +260,7 @@ class ColourInteract(MyGraph):
 
 
 class SalientDists(MyGraph):
-    def __init__(self, id, data, c1, c2, c3, d, x=None, y=None, seed=42, rewirer=None):
+    def __init__(self, id, data, c1, c2, c3, d, distances=None, x=None, y=None, seed=42, rewirer=None):
         super().__init__(id, data)
 
         torch.manual_seed(seed)
@@ -261,7 +268,10 @@ class SalientDists(MyGraph):
 
         self.c1, self.c2, self.c3, self.d = c1, c2, c3, d
 
-        self.distances = None
+        if distances is None:
+            self.distances = None
+        else:
+            self.distances = distances
 
         self._set_x(x)
         self._set_y(y)
@@ -288,29 +298,33 @@ class SalientDists(MyGraph):
         Excluding self-interactions (i.e. nodes separated by distance 0).
         Sum runs over distinct pairs only (i.e. (i,j) and (j,i) are not double-counted).
         """
-
         if y is None:
             g = to_networkx(self.data, to_undirected=True)
-            distances = dict(nx.all_pairs_shortest_path_length(g))
-            self.distances = distances
 
-            y = 0
+            if self.distances is None:
+                distances = dict(nx.all_pairs_shortest_path_length(g))
+                self.distances = distances
+
+            dist_matrix = np.zeros((self.num_nodes, self.num_nodes))
 
             for i in range(self.num_nodes):
                 for j in range(
                     i + 1, self.num_nodes
                 ):  # we choose to avoid self-interactions
-                    dist = distances[i][j]
+                    dist_matrix[i, j] = self.distances[i][j]
 
-                    if dist == 1:
-                        y += self.c1 * \
-                            torch.exp(self.data.x[i] + self.data.x[j])
-                    elif dist == self.d:
-                        y += self.c2 * \
-                            torch.exp(self.data.x[i] + self.data.x[j])
-                    else:
-                        y += self.c3 * \
-                            torch.exp(self.data.x[i] + self.data.x[j])
+            dist_matrix = torch.tensor(dist_matrix)
+
+            sum_x = self.data.x + self.data.x.T
+
+            mask_1 = (dist_matrix == 1)
+            mask_d = (dist_matrix == self.d)
+            mask_other = (dist_matrix != 1) & (
+                dist_matrix != self.d) & (dist_matrix != 0)
+
+            y = torch.sum(self.c1 * torch.exp(sum_x[mask_1])) + \
+                torch.sum(self.c2 * torch.exp(sum_x[mask_d])) + \
+                torch.sum(self.c3 * torch.exp(sum_x[mask_other]))
 
             y = torch.tensor([y], dtype=torch.float)
 

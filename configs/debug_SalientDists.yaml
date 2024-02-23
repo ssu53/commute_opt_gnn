@@ -6,9 +6,9 @@ data:
   d: 5
   train_size: 500
   val_size: 100
-  min_train_nodes: 20
-  max_train_nodes: 30
-  max_val_nodes: 40
+  min_train_nodes: 100
+  max_train_nodes: 200
+  max_val_nodes: 300
   
 model:
   hidden_channels: 8

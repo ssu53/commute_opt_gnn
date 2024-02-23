@@ -353,11 +353,11 @@ def run_experiment():
 
 def main():
     # run_experiment()
-    # quick_run(["cayley", "fully_connected", "interacting_pairs"],
-    #           "debug_SalientDists.yaml")
-    quick_run(
-        ["cayley", "fully_connected", "cayley_clusters"], "debug_ColourInteract.yaml"
-    )
+    quick_run(["cayley", "fully_connected", "interacting_pairs"],
+              "debug_SalientDists.yaml")
+    # quick_run(
+    #     ["cayley", "fully_connected", "cayley_clusters"], "debug_ColourInteract.yaml"
+    # )
 
 
 if __name__ == "__main__":
