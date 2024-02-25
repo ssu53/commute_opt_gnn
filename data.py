@@ -355,6 +355,59 @@ class SalientDists(MyGraph):
                 torch.tensor(rewire_edge_index), "e n -> n e"
             )
             self.rewire_edge_index = rewire_edge_index
+        
+        elif rewirer == "distance_d_pairs":
+            rewire_edge_index = []
+
+            for i in self.distances:
+                for j, dist in self.distances[i].items():
+                    if dist == self.d:
+                        rewire_edge_index.append((i, j))
+
+            rewire_edge_index = einops.rearrange(
+                torch.tensor(rewire_edge_index), "e n -> n e"
+            )
+            self.rewire_edge_index = rewire_edge_index
+
+        elif rewirer == "aligned_cayley":
+            
+            # create G1 based on distance d pairs
+            g1 = nx.Graph()
+            for i in self.distances:
+                g1.add_node(i)
+                for j, dist in self.distances[i].items():
+                    if dist == self.d:
+                        g1.add_edge(i,j)
+
+            # create G2 as trimmed Cayley expander
+                        
+            if self.num_nodes < 2:
+                raise ValueError(
+                    "Cayley graph requires at least 2 nodes, but got only {}.".format(
+                        self.num_nodes
+                    )
+                )
+            
+            cg_gen = CayleyGraphGenerator(self.num_nodes)
+            cg_gen.generate_cayley_graph()
+            cg_gen.trim_graph()
+            g2 = cg_gen.G_trimmed
+            
+            # get correspondence between nodes
+            correspondence_1_to_2 = get_correspondence(g1, g2)
+            correspondence_2_to_1 = {v:k for k,v in correspondence_1_to_2.items()}
+            
+            # produce rewired edge index
+
+            rewire_edge_index = nx.relabel_nodes(g2, correspondence_2_to_1)
+
+            rewire_edge_index = einops.rearrange(
+                torch.tensor(list(rewire_edge_index.edges)),
+                "e n -> n e",
+            )
+
+            self.rewire_edge_index = rewire_edge_index
+
 
         elif rewirer == "fully_connected":
             self.attach_fully_connected()
@@ -373,3 +426,47 @@ class SalientDists(MyGraph):
             rewire_edge_index=self.rewire_edge_index,
             id=self.id,
         )
+
+
+
+def count_captured_edges(g1, g2, correspondence):
+    """
+    Count the fraction of edges in g1 included in g2, if nodes are mapped according to correspondence
+    Success metric for graph alignment step...
+    """
+    cnt = 0
+    for edge in g1.edges:
+        edge_c = (correspondence[edge[0]], correspondence[edge[1]])
+        if edge_c in g2.edges: cnt += 1
+    return cnt / g1.number_of_edges()
+
+
+
+def get_correspondence(g1, g2):
+    """
+    Naive graph alignment between two equal size graphs
+    Returns a correspondence dictionary mapping each g1 nodes to g2 nodes bijectively
+    """
+
+    assert g1.number_of_nodes() == g2.number_of_nodes()
+
+    correspondence = {node: None for node in list(g1.nodes)}
+    g2_nodes_remaining = set(g2.nodes)
+
+    for node1 in correspondence:
+                
+        if correspondence[node1] is not None: continue
+
+        node2 = g2_nodes_remaining.pop()
+        correspondence[node1] = node2
+        neighbs = list(g1.neighbors(node1))
+
+        for neighb in neighbs:
+            if correspondence[neighb] is not None: continue
+            candidates = list(node for node in g2.neighbors(node2) if node in g2_nodes_remaining)
+            if len(candidates) == 0: continue
+            cand = candidates[0]
+            g2_nodes_remaining.remove(cand)
+            correspondence[neighb] = cand             
+
+    return correspondence

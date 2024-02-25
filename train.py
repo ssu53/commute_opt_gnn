@@ -1,17 +1,19 @@
-import json
 import os
+import json
+import yaml
+import argparse
+from easydict import EasyDict
 from pprint import pprint
+from tqdm import tqdm
+import wandb
 
 import numpy as np
 import torch
-import yaml
-from easydict import EasyDict
 from torch_geometric.loader import DataLoader
-from tqdm import tqdm
 
-import wandb
 from generate_data import get_data_ColourInteract, get_data_SalientDists
 from models import GINModel
+
 
 
 def train_model(data, model, optimiser, loss_fn):
@@ -230,9 +232,9 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
         )
 
 
-def run_experiment():
-    with open("configs/config.yaml", "r") as f:
-        config = yaml.safe_load(f)
+def run_experiment(config_fn):
+    with open(f"configs/{config_fn}", "r") as f:
+        config = EasyDict(yaml.safe_load(f))
 
     print(config)
 
@@ -241,107 +243,125 @@ def run_experiment():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
 
-    results = {
-        "only_original": [],
-        "only_diff": {
-            "cayley": [],
-            "interacting_pairs": [],
-            "fully_connected": [],
-        },
-        "interleave": {
-            "cayley": [],
-            "interacting_pairs": [],
-            "fully_connected": [],
-        },
-    }
-
-    seeds = [73, 47, 23]
-
-    num_runs = len(seeds) * (
-        len(results["only_diff"].keys()) ** 2 -
-        len(results["only_diff"].keys()) + 1
-    )
+    assert (config.model.approach == "only_original") or \
+            (config.model.approach == "only_diff") or \
+            (config.model.approach == "interleave")
+    if config.model.approach == "only_original":
+        print("No rewiring.")
+        num_runs = len(config.data.seeds)
+        config.data.rewirers = [None]
+    else:
+        num_runs = len(config.data.seeds) * len(config.data.rewirers)
+    
+    results = {rewirer: [] for rewirer in config.data.rewirers}
 
     with tqdm(total=num_runs, disable=not config.run.silent) as pbar:
-        for run_num, seed in enumerate(seeds):
-            for m_idx, method in enumerate(results["only_diff"].keys()):
+
+        for seed in config.data.seeds:
+
+            # load data
+
+            if config.data.name == "SalientDists":
                 graphs_train, graphs_val = get_data_SalientDists(
-                    rewirer=method,
+                    rewirers=config.data.rewirers,
+                    dataset=config.data.dataset,
+                    device=device,
                     c1=config.data.c1,
                     c2=config.data.c2,
                     c3=config.data.c3,
                     d=config.data.d,
-                    train_test_size_boundary=config.data.train_test_size_boundary,
+                    min_train_nodes=config.data.min_train_nodes,
+                    max_train_nodes=config.data.max_train_nodes,
+                    max_val_nodes=config.data.max_val_nodes,
                     train_size=config.data.train_size,
                     val_size=config.data.val_size,
-                    device=device,
                     seed=seed,
-                    verbose=not config.run.silent,
+                    verbose=config.run.silent,
                 )
 
-                train_mean = np.mean([g.y.cpu() for g in graphs_train])
-                train_std = np.std([g.y.cpu() for g in graphs_train])
-                print(f"train targets: {train_mean:.2f} +/- {train_std:.3f}")
+            elif config.data.name == "ColourInteract":
+                graphs_train, graphs_val = get_data_ColourInteract(
+                    rewirers=config.data.rewirers,
+                    dataset=config.data.dataset,
+                    device=device,
+                    c1=config.data.c1,
+                    c2=config.data.c2,
+                    num_colours=config.data.num_colours,
+                    min_train_nodes=config.data.min_train_nodes,
+                    max_train_nodes=config.data.max_train_nodes,
+                    max_val_nodes=config.data.max_val_nodes,
+                    train_size=config.data.train_size,
+                    val_size=config.data.val_size,
+                    seed=seed,
+                    verbose=config.run.silent,
+                )
 
-                val_mean = np.mean([g.y.cpu() for g in graphs_val])
-                val_std = np.std([g.y.cpu() for g in graphs_val])
-                print(f"val targets: {val_mean:.2f} +/- {val_std:.3f}")
+            print(
+                f"train targets: {np.mean([g.y.cpu() for g in graphs_train[0]]):.2f} +/- {np.std([g.y.cpu() for g in graphs_train[0]]):.3f}"
+            )
+            
+            print(
+                f"val targets: {np.mean([g.y.cpu() for g in graphs_val[0]]):.2f} +/- {np.std([g.y.cpu() for g in graphs_val[0]]):.3f}"
+            )
+            
+            in_channels = graphs_train[0][0].x.shape[1]
+            out_channels = (
+                1 if len(graphs_train[0][0].y.shape) == 0 else len(
+                    graphs_train[0][0].y.shape)
+            )
+
+            # run experiment for each rewirer
+
+            for ind_rewirer,rewirer in enumerate(config.data.rewirers):
+
+                print(f"Rewirer {rewirer} with seed {seed}")
 
                 dl_train = DataLoader(
-                    graphs_train, batch_size=config.train.train_batch_size
+                    graphs_train[ind_rewirer], batch_size=config.train.train_batch_size
                 )
                 dl_val = DataLoader(
-                    graphs_val, batch_size=config.train.val_batch_size)
+                    graphs_val[ind_rewirer], batch_size=config.train.val_batch_size
+                )
 
-                in_channels = graphs_train[0].x.shape[1]
-                output_shape = graphs_train[0].y.shape
-                out_channels = 1 if len(
-                    output_shape) == 0 else len(output_shape)
+                wandb.init(
+                    project=config.wandb.project,
+                    entity=config.wandb.entity,
+                    config=config,
+                    group=config.wandb.experiment_name
+                    + f"-{config.model.approach}-rewired-with-{rewirer}",
+                )
 
-                for approach in results.keys():
-                    if approach == "only_original" and m_idx > 0:
-                        continue
+                wandb.run.name = (
+                    config.wandb.experiment_name
+                    + f"-{config.model.approach}-rewired-with-{rewirer}-seed-{seed}"
+                )
+                
+                model = GINModel(
+                    in_channels=in_channels,
+                    hidden_channels=config.model.hidden_channels,
+                    num_layers=config.model.num_layers,
+                    out_channels=out_channels,
+                    drop_prob=config.model.drop_prob,
+                    only_original_graph=(config.model.approach == "only_original"),
+                    interleave_diff_graph=(config.model.approach == "interleave"),
+                    only_diff_graph=(config.model.approach == "only_diff"),
+                ).to(device)
 
-                    wandb.init(
-                        project=config.wandb.project,
-                        entity=config.wandb.entity,
-                        config=config,
-                        group=config.wandb.experiment_name
-                        + f"-using-approach-{approach}-with-{method}",
-                    )
-                    wandb.run.name = (
-                        config.wandb.experiment_name
-                        + f"-using-approach-{approach}-with-{method}-run-{run_num}"
-                    )
+                final_val_loss = train_eval_loop(
+                    model,
+                    dl_train,
+                    dl_val,
+                    lr=config.train.lr,
+                    num_epochs=config.train.num_epochs,
+                    print_every=config.train.print_every,
+                    verbose=not config.run.silent,
+                    log_wandb=True,
+                )
+            
+                results[rewirer].append(final_val_loss)
 
-                    model = GINModel(
-                        in_channels=in_channels,
-                        hidden_channels=config.model.hidden_channels,
-                        num_layers=config.model.num_layers,
-                        out_channels=out_channels,
-                        drop_prob=config.model.drop_prob,
-                        only_original_graph=(approach == "only_original"),
-                        interleave_diff_graph=(approach == "interleave"),
-                        only_diff_graph=(approach == "only_diff"),
-                    ).to(device)
-
-                    final_val_loss = train_eval_loop(
-                        model,
-                        dl_train,
-                        dl_val,
-                        lr=config.train.lr,
-                        num_epochs=config.train.num_epochs,
-                        print_every=config.train.print_every,
-                        verbose=not config.run.silent,
-                    )
-
-                    if approach == "only_original":
-                        results[approach].append(final_val_loss)
-                    else:
-                        results[approach][method].append(final_val_loss)
-
-                    wandb.finish()
-                    pbar.update(1)
+                wandb.finish()
+                pbar.update(1)
 
     with open("data/results/" + config.wandb.experiment_name + ".json", "w") as f:
         json.dump(results, f)
@@ -352,9 +372,15 @@ def run_experiment():
 
 
 def main():
-    # run_experiment()
-    quick_run(["cayley", "fully_connected", "interacting_pairs"],
-              "debug_SalientDists.yaml")
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config_fn', help="configuration file name", type=str)
+    args = parser.parse_args()
+
+    run_experiment(args.config_fn)
+
+    # quick_run(["aligned_cayley", "cayley", "fully_connected", "interacting_pairs"],
+            #   "debug_SalientDists.yaml")
     # quick_run(
     #     ["cayley", "fully_connected", "cayley_clusters"], "debug_ColourInteract.yaml"
     # )

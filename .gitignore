@@ -4,3 +4,4 @@ l65-env/
 wandb/
 data/
 .vscode/launch.json
+nohup_out/
