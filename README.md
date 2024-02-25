@@ -36,9 +36,21 @@ All models are compatible with graph batching.
 
 ## Training
 
-Run `python3 train.py` to run with all defaults. 
+Run `python3 train.py --config_fn=YOUR_CONFIG_FILE_NAME`. `YOUR_CONFIG_FILE_NAME`, e.g. `config0.yaml`, should be located ins `./configs`.
 
 
-The dataset is loaded with the rewiring choice. For the `SalientDists` synthetic data, availble rewirings are: `"cayley"` (Cayley expander graph), `"interacting_pairs"` (all pairs that pairwise interact per the definition of this dataset) and `"fully_connected"` (all nodes connected). For the `ColourInteract` synthetic data, availble rewirings are: `"cayley"` (Cayley expander graph), `"cayley_clusters"` (nodes of the same colour form a cayley subgraph, and subgraphs are sparsely connected with a single extra node/cluster) and `"fully_connected"`
+The dataset is loaded with the rewiring choice. 
+
+For the `SalientDists` synthetic data, availble rewirings are: 
+
+* `"cayley"` (BFS-trimmed Cayley expander graph)
+* `"fully_connected"` (all nodes connected)
+* `"interacting_pairs"` (all pairs at distance 1 and `d` that interact with coefficients `c1`, `c2`, per the definition of this dataset) 
+* `"aligned_cayley"` (union of pairs at distance `d` informs the non-random alignment of Cayley expander over base graph)
+
+For the `ColourInteract` synthetic data, availble rewirings are: 
+* `"cayley"` (BFS-trimmed Cayley expander graph)
+* `"fully_connected"` (all nodes connected)
+* `"cayley_clusters"` (nodes of the same colour form a cayley subgraph, and subgraphs are sparsely connected with a single extra node/cluster) 
 
 ![Cayley Cluster Example](figures/clusters_prior.png)
