@@ -1,0 +1,34 @@
+wandb:
+  experiment_name: ''
+  project: 'ColourInteract'
+  entity: 'commute_opt_gnn'
+
+data:
+  name: ColourInteract
+  dataset: ZINC
+  c1: 0.7
+  c2: 0.3
+  num_colours: 4
+  train_size: 5000
+  val_size: 900
+  min_train_nodes: 15
+  max_train_nodes: 30
+  max_val_nodes: 60
+  seeds: [73, 47, 23]
+  rewirers: ["cayley_clusters", "cayley", "fully_connected"]
+
+model:
+  hidden_channels: 8
+  num_layers: 5
+  drop_prob: 0.0
+  approach: "only_original"
+
+train:
+  lr: 0.001
+  num_epochs: 200
+  print_every: 10
+  train_batch_size: 512
+  val_batch_size: 512
+
+run:
+  silent: False
