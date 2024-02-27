@@ -49,6 +49,8 @@ def get_data_SalientDists(
             name="Peptides-struct",
             split="val",
         )
+    else:
+        raise NotImplementedError(f"Dataset {dataset} not implemented")
 
     graphs_train = [[] for _ in rewirers]
     graphs_val = [[] for _ in rewirers]
@@ -63,9 +65,6 @@ def get_data_SalientDists(
 
     print("Preprocessing data...")
     for i in range(len(all_graphs_train)):
-        distances = None
-        x = None
-        y = None
         nx_graph = to_networkx(all_graphs_train[i], to_undirected=True)
         conditions = (
             nx.is_connected(nx_graph)
@@ -82,15 +81,9 @@ def get_data_SalientDists(
                     c2=c2,
                     c3=c3,
                     d=d,
-                    x=x,
-                    y=y,
-                    distances=distances,
                     seed=seed,
                     rewirer=rewirer,
                 )
-                distances = g.distances
-                x = g.x
-                y = g.y
 
                 graphs_train[num].append(g.to_torch_data().to(device))
                 num_nodes_train.append(g.num_nodes)
@@ -110,9 +103,6 @@ def get_data_SalientDists(
         disable=verbose,
     )
     for i in range(len(all_graphs_val)):
-        distances = None
-        x = None
-        y = None
         nx_graph = to_networkx(all_graphs_val[i], to_undirected=True)
         conditions = (
             nx.is_connected(nx_graph)
@@ -129,16 +119,10 @@ def get_data_SalientDists(
                     c2=c2,
                     c3=c3,
                     d=d,
-                    x=x,
-                    y=y,
-                    distances=distances,
                     seed=seed,
                     rewirer=rewirer,
                 )
-                distances = g.distances
-                x = g.x
-                y = g.y
-                
+
                 graphs_val[num].append(g.to_torch_data().to(device))
                 num_nodes_val.append(g.num_nodes)
                 pbar.update(1)
@@ -198,17 +182,12 @@ def get_data_ColourInteract(
     graphs_train = [[] for _ in rewirers]
     graphs_val = [[] for _ in rewirers]
 
-    num_nodes_train = []
     pbar = tqdm(
         total=train_size * len(rewirers),
         desc=f"Generating training data",
         disable=verbose,
     )
     for i in range(len(all_graphs_train)):
-        distances = None
-        x = None
-        y = None
-        colours = None
         nx_graph = to_networkx(all_graphs_train[i], to_undirected=True)
         conditions = (
             nx.is_connected(nx_graph)
@@ -223,25 +202,14 @@ def get_data_ColourInteract(
                     c1=c1,
                     c2=c2,
                     num_colours=num_colours,
-                    distances=distances,
-                    x=x,
-                    y=y,
-                    colours=colours,
                     seed=seed,
                     rewirer=rewirer,
                 )
-                distances = g.distances
-                x = g.x
-                y = g.y
-                colours = g.colours
 
                 graphs_train[num].append(g.to_torch_data().to(device))
                 pbar.update(1)
             else:
                 break
-
-        if x is not None:
-            num_nodes_train.append(g.num_nodes)
 
     pbar = tqdm(
         total=val_size * len(rewirers),
@@ -249,12 +217,6 @@ def get_data_ColourInteract(
         disable=verbose,
     )
     for i in range(len(all_graphs_val)):
-        distances = None
-        distances = None
-        x = None
-        y = None
-        colours = None
-
         nx_graph = to_networkx(all_graphs_val[i], to_undirected=True)
         conditions = (
             nx.is_connected(nx_graph)
@@ -270,17 +232,9 @@ def get_data_ColourInteract(
                     c1=c1,
                     c2=c2,
                     num_colours=num_colours,
-                    distances=distances,
-                    x=x,
-                    y=y,
-                    colours=colours,
                     seed=seed,
                     rewirer=rewirer,
                 )
-                distances = g.distances
-                x = g.x
-                y = g.y
-                colours = g.colours
 
                 graphs_val[num].append(g.to_torch_data().to(device))
                 pbar.update(1)

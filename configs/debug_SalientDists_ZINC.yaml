@@ -1,8 +1,8 @@
 data:
   dataset : 'ZINC'
   c1: 1.0
-  c2: 5.0
-  c3: 0.01
+  c2: 20.0
+  c3: 0.1
   d: 5
   train_size: 5000
   val_size: 200

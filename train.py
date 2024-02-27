@@ -95,7 +95,7 @@ def train_eval_loop(
 
 def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    seed = 42
+    seed = 93
 
     with open(f"configs/{config_file}", "r") as f:
         config = EasyDict(yaml.safe_load(f))
@@ -376,9 +376,9 @@ def main():
     quick_run(
         [
             "cayley",
-            "fully_connected",
+            # "fully_connected",
             "aligned_cayley",
-            "interacting_pairs"
+            # "interacting_pairs"
         ],
       "debug_SalientDists_ZINC.yaml"
       )
@@ -386,10 +386,10 @@ def main():
     # quick_run(
     #     [
     #         "cayley",
-    #         "fully_connected",
+    #         # "fully_connected",
     #         "cayley_clusters",
     #     ],
-    #     "debug_ColourInteract_ZINC.yaml"
+    #     "debug_ColourInteract.yaml"
     # )
 
 

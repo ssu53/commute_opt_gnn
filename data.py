@@ -102,7 +102,7 @@ class ColourInteract(MyGraph):
         c1,
         c2,
         num_colours,
-        distances,
+        distances=None,
         x=None,
         y=None,
         colours=None,
@@ -124,10 +124,7 @@ class ColourInteract(MyGraph):
 
         self.normalise = normalise
 
-        if distances is None:
-            self.distances = None
-        else:
-            self.distances = distances
+        self.distances = distances
 
         self._set_x(x)
         self._set_y(y)
@@ -305,10 +302,7 @@ class SalientDists(MyGraph):
         self.c1, self.c2, self.c3, self.d = c1, c2, c3, d
         self.normalise = normalise
 
-        if distances is None:
-            self.distances = None
-        else:
-            self.distances = distances
+        self.distances = distances
 
         self._set_x(x)
         self._set_y(y)
@@ -354,8 +348,8 @@ class SalientDists(MyGraph):
 
             sum_x = self.data.x + self.data.x.T
 
-            mask_1 = dist_matrix == 1
-            mask_d = dist_matrix == self.d
+            mask_1 = (dist_matrix == 1)
+            mask_d = (dist_matrix == self.d)
             mask_other = (
                 (dist_matrix != 1) & (dist_matrix != self.d) & (dist_matrix != 0)
             )

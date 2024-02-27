@@ -1,10 +1,10 @@
 data:
   dataset : 'ZINC'
   c1: 1.0
-  c2: 5.0
+  c2: 20.0
   num_colours: 3
   train_size: 5000
-  val_size: 500
+  val_size: 200
   min_train_nodes: 15
   max_train_nodes: 25
   max_val_nodes: 35
