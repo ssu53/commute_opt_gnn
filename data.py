@@ -97,7 +97,7 @@ class MyGraph:
 
 class ColourInteract(MyGraph):
     def __init__(
-        self, id, data, c1, c2, num_colours, distances, x=None, y=None, colours=None, seed=42, rewirer=None
+        self, id, data, c1, c2, num_colours, distances, x=None, y=None, colours=None, seed=42, rewirer=None, normalise=True
     ):
         super().__init__(id, data)
 
@@ -110,6 +110,8 @@ class ColourInteract(MyGraph):
 
         self.values = None
         self.colours = colours
+
+        self.normalise = normalise
 
         if distances is None:
             self.distances = None
@@ -194,6 +196,8 @@ class ColourInteract(MyGraph):
 
                 y += torch.sum(self.c2 * interactions[same_color_matrix])
 
+            if self.normalise:
+                y = y / self.num_nodes
             y = torch.tensor([y], dtype=torch.float)
 
         self.data.y = y
@@ -248,6 +252,7 @@ class ColourInteract(MyGraph):
 
                 # Add one random edge from one_colour cayley (which has indexes range(node_idx, node_idx+num_nodes) to the rest of the graph which has indexes range(0, node_idx)) using random.randint
                 if node_idx > 0:
+                    # pass
                     one_colour_cayley.add_edge(
                         random.randint(node_idx, node_idx + num_nodes - 1),
                         random.randint(0, node_idx - 1),
@@ -270,13 +275,14 @@ class ColourInteract(MyGraph):
 
 
 class SalientDists(MyGraph):
-    def __init__(self, id, data, c1, c2, c3, d, distances=None, x=None, y=None, seed=42, rewirer=None):
+    def __init__(self, id, data, c1, c2, c3, d, distances=None, x=None, y=None, seed=42, rewirer=None, normalise=True):
         super().__init__(id, data)
 
         torch.manual_seed(seed)
         random.seed(seed)
 
         self.c1, self.c2, self.c3, self.d = c1, c2, c3, d
+        self.normalise = normalise
 
         if distances is None:
             self.distances = None
@@ -336,6 +342,8 @@ class SalientDists(MyGraph):
                 torch.sum(self.c2 * torch.exp(sum_x[mask_d])) + \
                 torch.sum(self.c3 * torch.exp(sum_x[mask_other]))
 
+            if self.normalise:
+                y = y / self.num_nodes
             y = torch.tensor([y], dtype=torch.float)
 
         self.data.y = y

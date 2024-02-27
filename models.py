@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch_geometric.nn import MessagePassing, global_add_pool
+from torch_geometric.nn import MessagePassing, global_add_pool, global_mean_pool
 
 
 class MyGINConv(MessagePassing):
@@ -43,6 +43,7 @@ class GINModel(nn.Module):
         interleave_diff_graph: bool = False,
         only_original_graph: bool = False,
         only_diff_graph: bool = False,
+        global_pool_aggr: str = "global_add_pool",
     ):
         """
         Args
@@ -71,7 +72,12 @@ class GINModel(nn.Module):
         self.only_diff_graph = only_diff_graph
 
         self.lin_in = nn.Linear(in_channels, hidden_channels)
-        self.pool = global_add_pool
+        if global_pool_aggr == "global_add_pool":
+            self.pool = global_add_pool
+        elif global_pool_aggr == "global_mean_pool":
+            self.pool = global_mean_pool
+        else:
+            raise NotImplementedError
         self.lin_out = nn.Linear(hidden_channels, out_channels)
 
         self.convs = torch.nn.ModuleList()

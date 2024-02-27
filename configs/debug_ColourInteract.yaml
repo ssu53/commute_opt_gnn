@@ -13,11 +13,12 @@ model:
   hidden_channels: 8
   num_layers: 5
   drop_prob: 0.0
+  global_pool_aggr: global_mean_pool
 
 train:
   lr: 0.001
-  num_epochs: 200
-  print_every: 10
+  num_epochs: 600
+  print_every: 50
   train_batch_size: 128
   val_batch_size: 128
 

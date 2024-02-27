@@ -168,26 +168,27 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
     print("-------------------")
     print("Training a GIN model without rewiring...")
 
-    # model = GINModel(
-    #     in_channels=in_channels,
-    #     hidden_channels=config.model.hidden_channels,
-    #     num_layers=config.model.num_layers,
-    #     out_channels=out_channels,
-    #     drop_prob=config.model.drop_prob,
-    #     only_original_graph=True,
-    # )
-    # model.to(device)
+    model = GINModel(
+        in_channels=in_channels,
+        hidden_channels=config.model.hidden_channels,
+        num_layers=config.model.num_layers,
+        out_channels=out_channels,
+        drop_prob=config.model.drop_prob,
+        only_original_graph=True,
+        global_pool_aggr=config.model.global_pool_aggr,
+    )
+    model.to(device)
 
-    # train_eval_loop(
-    #     model,
-    #     dl_train,
-    #     dl_val,
-    #     lr=config.train.lr,
-    #     num_epochs=config.train.num_epochs,
-    #     print_every=config.train.print_every,
-    #     verbose=True,
-    #     log_wandb=False,
-    # )
+    train_eval_loop(
+        model,
+        dl_train,
+        dl_val,
+        lr=config.train.lr,
+        num_epochs=config.train.num_epochs,
+        print_every=config.train.print_every,
+        verbose=True,
+        log_wandb=False,
+    )
 
     for num, rewirer in enumerate(rewirers):
         print("-------------------")
@@ -212,6 +213,7 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
             out_channels=out_channels,
             drop_prob=config.model.drop_prob,
             interleave_diff_graph=True,
+            global_pool_aggr=config.model.global_pool_aggr,
         )
         model.to(device)
 
@@ -365,16 +367,29 @@ def run_experiment(config_fn):
 
 
 def main():
+
     # parser = argparse.ArgumentParser()
     # parser.add_argument("--config_fn", help="configuration file name", type=str)
     # args = parser.parse_args()
-
     # run_experiment(args.config_fn)
 
-    quick_run(["aligned_cayley", "cayley", "interacting_pairs"],
-      "debug_SalientDists.yaml")
+    quick_run(
+        [
+            "cayley",
+            "fully_connected",
+            "aligned_cayley",
+            "interacting_pairs"
+        ],
+      "debug_SalientDists.yaml"
+      )
+    
     # quick_run(
-    #     ["cayley", "fully_connected", "cayley_clusters"], "debug_ColourInteract.yaml"
+    #     [
+    #         "cayley",
+    #         "fully_connected",
+    #         "cayley_clusters",
+    #     ],
+    #     "debug_ColourInteract.yaml"
     # )
 
 
