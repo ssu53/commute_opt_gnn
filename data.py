@@ -97,7 +97,7 @@ class MyGraph:
 
 class ColourInteract(MyGraph):
     def __init__(
-        self, id, data, c1, c2, num_colours, distances, x=None, y=None, seed=42, rewirer=None
+        self, id, data, c1, c2, num_colours, distances, x=None, y=None, colours=None, seed=42, rewirer=None
     ):
         super().__init__(id, data)
 
@@ -109,7 +109,7 @@ class ColourInteract(MyGraph):
         self.num_colours = num_colours
 
         self.values = None
-        self.colours = None
+        self.colours = colours
 
         if distances is None:
             self.distances = None
@@ -158,7 +158,7 @@ class ColourInteract(MyGraph):
         Compute the regression target y for the graph as:
             \sum_{c \in colours} \sum_{i,j of colour c} c_1 exp(v_i + v_j)
             +
-            \sum_{d} \sum_{i,j at distance d} c_2 2^{-d} exp(v_i + v_j)
+            \sum_{d} \sum_{i,j at distance 1} c_2 2^{-d} exp(v_i + v_j)
         where v_i is the value associated with node i
         Excluding self-interactions (i.e. nodes separated by distance 0).
         Sum runs over distinct pairs only (i.e. (i,j) and (j,i) are not double-counted).
@@ -170,19 +170,29 @@ class ColourInteract(MyGraph):
             if self.distances is None:
                 self.distances = dict(nx.all_pairs_shortest_path_length(g))
 
-            y = 0.0
+            dist_matrix = np.zeros((self.num_nodes, self.num_nodes))
 
-            for node_i in range(self.num_nodes):
-                # we choose to avoid self-interactions
-                for node_j in range(node_i + 1, self.num_nodes):
-                    interaction = torch.exp(
-                        self.values[node_i] + self.values[node_j])
+            for i in range(self.num_nodes):
+                for j in range(i + 1, self.num_nodes):  # Avoid self-interactions
+                    dist_matrix[i, j] = self.distances[i][j]
 
-                    if self.colours[node_i].item() == self.colours[node_j].item():
-                        y += self.c1 * interaction
+            dist_matrix = torch.tensor(dist_matrix)
+            mask_1 = (dist_matrix == 1)
 
-                    y += self.c2 * \
-                        2 ** (-self.distances[node_i][node_j]) * interaction
+            interactions = torch.exp(self.values + self.values.T)
+            interactions.fill_diagonal_(0)
+
+            sum_values_at_1 = torch.sum(self.c1 * interactions[mask_1])
+
+            y = self.c1 * sum_values_at_1
+
+            for color in range(self.num_colours):
+                color_mask = (self.colours == color)
+
+                same_color_matrix = color_mask.unsqueeze(
+                    1) & color_mask.unsqueeze(0)
+
+                y += torch.sum(self.c2 * interactions[same_color_matrix])
 
             y = torch.tensor([y], dtype=torch.float)
 

@@ -1,10 +1,10 @@
 data:
   dataset : 'LRGB'
-  c1: 0.7
-  c2: 0.3
-  num_colours: 4
-  train_size: 500
-  val_size: 100
+  c1: 1.0
+  c2: 5.0
+  num_colours: 5
+  train_size: 5000
+  val_size: 1000
   min_train_nodes: 100
   max_train_nodes: 200
   max_val_nodes: 300
@@ -16,10 +16,10 @@ model:
 
 train:
   lr: 0.001
-  num_epochs: 100
+  num_epochs: 500
   print_every: 10
-  train_batch_size: 32
-  val_batch_size: 32
+  train_batch_size: 512
+  val_batch_size: 512
 
 run:
   silent: False

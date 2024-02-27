@@ -170,26 +170,26 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
     print("-------------------")
     print("Training a GIN model without rewiring...")
 
-    model = GINModel(
-        in_channels=in_channels,
-        hidden_channels=config.model.hidden_channels,
-        num_layers=config.model.num_layers,
-        out_channels=out_channels,
-        drop_prob=config.model.drop_prob,
-        only_original_graph=True,
-    )
-    model.to(device)
+    # model = GINModel(
+    #     in_channels=in_channels,
+    #     hidden_channels=config.model.hidden_channels,
+    #     num_layers=config.model.num_layers,
+    #     out_channels=out_channels,
+    #     drop_prob=config.model.drop_prob,
+    #     only_original_graph=True,
+    # )
+    # model.to(device)
 
-    train_eval_loop(
-        model,
-        dl_train,
-        dl_val,
-        lr=config.train.lr,
-        num_epochs=config.train.num_epochs,
-        print_every=config.train.print_every,
-        verbose=True,
-        log_wandb=False,
-    )
+    # train_eval_loop(
+    #     model,
+    #     dl_train,
+    #     dl_val,
+    #     lr=config.train.lr,
+    #     num_epochs=config.train.num_epochs,
+    #     print_every=config.train.print_every,
+    #     verbose=True,
+    #     log_wandb=False,
+    # )
 
     for num, rewirer in enumerate(rewirers):
         print("-------------------")
@@ -218,7 +218,7 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
         )
         model.to(device)
 
-        train_eval_loop(
+        end_results = train_eval_loop(
             model,
             dl_train,
             dl_val,
@@ -353,11 +353,11 @@ def run_experiment():
 
 def main():
     # run_experiment()
-    quick_run(["cayley", "fully_connected", "interacting_pairs"],
-              "debug_SalientDists.yaml")
-    # quick_run(
-    #     ["cayley", "fully_connected", "cayley_clusters"], "debug_ColourInteract.yaml"
-    # )
+    # quick_run(["cayley", "fully_connected", "interacting_pairs"],
+    #           "debug_SalientDists.yaml")
+    quick_run(
+        ["cayley", "cayley_clusters"], "debug_ColourInteract.yaml"
+    )
 
 
 if __name__ == "__main__":

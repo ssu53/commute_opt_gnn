@@ -56,7 +56,7 @@ def get_data_SalientDists(
     num_nodes_train = []
     num_nodes_val = []
     pbar = tqdm(
-        total=train_size*len(rewirers),
+        total=train_size * len(rewirers),
         desc=f"Generating training data",
         disable=verbose,
     )
@@ -93,11 +93,12 @@ def get_data_SalientDists(
                 break
 
     for num in range(len(rewirers)):
-        assert len(
-            graphs_train[num]) == train_size, f"len(graphs_train[{num}]) = {len(graphs_train[num])}, train_size = {train_size}"
+        assert (
+            len(graphs_train[num]) == train_size
+        ), f"len(graphs_train[{num}]) = {len(graphs_train[num])}, train_size = {train_size}"
 
     pbar = tqdm(
-        total=val_size*len(rewirers),
+        total=val_size * len(rewirers),
         desc=f"Generating validation data",
         disable=verbose,
     )
@@ -185,16 +186,23 @@ def get_data_ColourInteract(
 
     num_nodes_train = []
     pbar = tqdm(
-        total=train_size*len(rewirers),
+        total=train_size * len(rewirers),
         desc=f"Generating training data",
         disable=verbose,
     )
     for i in range(len(all_graphs_train)):
         distances = None
+        x = None
+        y = None
+        colours = None
+        nx_graph = to_networkx(all_graphs_train[i], to_undirected=True)
+        conditions = (
+            nx.is_connected(nx_graph)
+            and nx_graph.number_of_nodes() > min_train_nodes
+            and nx_graph.number_of_nodes() < max_train_nodes
+        )
         for num, rewirer in enumerate(rewirers):
-            if len(graphs_train[num]) < train_size and nx.is_connected(
-                to_networkx(all_graphs_train[i], to_undirected=True)
-            ):
+            if len(graphs_train[num]) < train_size and conditions:
                 g = ColourInteract(
                     id=i,
                     data=all_graphs_train[i],
@@ -202,32 +210,46 @@ def get_data_ColourInteract(
                     c2=c2,
                     num_colours=num_colours,
                     distances=distances,
+                    x=x,
+                    y=y,
+                    colours=colours,
                     seed=seed,
                     rewirer=rewirer,
                 )
                 distances = g.distances
+                x = g.x
+                y = g.y
+                colours = g.colours
 
-                if g.num_nodes > min_train_nodes and g.num_nodes < max_train_nodes:
-                    graphs_train[num].append(g.to_torch_data().to(device))
-                    pbar.update(1)
-                else:
-                    break
+                graphs_train[num].append(g.to_torch_data().to(device))
+                pbar.update(1)
             else:
                 break
 
-        num_nodes_train.append(g.num_nodes)
+        if x is not None:
+            num_nodes_train.append(g.num_nodes)
 
     pbar = tqdm(
-        total=val_size*len(rewirers),
-        desc=f"Generating validation data for {rewirer}",
+        total=val_size * len(rewirers),
+        desc=f"Generating validation data",
         disable=verbose,
     )
     for i in range(len(all_graphs_val)):
         distances = None
+        distances = None
+        x = None
+        y = None
+        colours = None
+
+        nx_graph = to_networkx(all_graphs_val[i], to_undirected=True)
+        conditions = (
+            nx.is_connected(nx_graph)
+            and nx_graph.number_of_nodes() > max_train_nodes
+            and nx_graph.number_of_nodes() < max_val_nodes
+        )
+
         for num, rewirer in enumerate(rewirers):
-            if len(graphs_val[num]) < val_size and nx.is_connected(
-                to_networkx(all_graphs_val[i], to_undirected=True)
-            ):
+            if len(graphs_val[num]) < val_size and conditions:
                 g = ColourInteract(
                     id=i,
                     data=all_graphs_val[i],
@@ -235,17 +257,19 @@ def get_data_ColourInteract(
                     c2=c2,
                     num_colours=num_colours,
                     distances=distances,
+                    x=x,
+                    y=y,
+                    colours=colours,
                     seed=seed,
                     rewirer=rewirer,
                 )
                 distances = g.distances
-                if g.num_nodes < max_val_nodes:
-                    graphs_val[num].append(g.to_torch_data().to(device))
-                    pbar.update(1)
-                else:
-                    break
-            else:
-                break
+                x = g.x
+                y = g.y
+                colours = g.colours
+
+                graphs_val[num].append(g.to_torch_data().to(device))
+                pbar.update(1)
 
     return graphs_train, graphs_val
 
