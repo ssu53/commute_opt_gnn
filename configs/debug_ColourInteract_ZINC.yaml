@@ -1,0 +1,26 @@
+data:
+  dataset : 'ZINC'
+  c1: 1.0
+  c2: 5.0
+  num_colours: 3
+  train_size: 5000
+  val_size: 500
+  min_train_nodes: 15
+  max_train_nodes: 25
+  max_val_nodes: 35
+
+model:
+  hidden_channels: 8
+  num_layers: 5
+  drop_prob: 0.0
+  global_pool_aggr: global_mean_pool
+
+train:
+  lr: 0.001
+  num_epochs: 200
+  print_every: 10
+  train_batch_size: 128
+  val_batch_size: 128
+
+run:
+  silent: False

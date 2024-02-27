@@ -111,7 +111,7 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
 
     # Get data
 
-    if config_file == "debug_SalientDists.yaml":
+    if config_file.startswith("debug_SalientDists"):
         graphs_train, graphs_val = get_data_SalientDists(
             rewirers=rewirers,
             dataset=config.data.dataset,
@@ -129,7 +129,7 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
             verbose=config.run.silent,
         )
 
-    elif config_file == "debug_ColourInteract.yaml":
+    elif config_file.startswith("debug_ColourInteract"):
         graphs_train, graphs_val = get_data_ColourInteract(
             rewirers=rewirers,
             dataset=config.data.dataset,
@@ -380,7 +380,7 @@ def main():
             "aligned_cayley",
             "interacting_pairs"
         ],
-      "debug_SalientDists.yaml"
+      "debug_SalientDists_ZINC.yaml"
       )
     
     # quick_run(
@@ -389,7 +389,7 @@ def main():
     #         "fully_connected",
     #         "cayley_clusters",
     #     ],
-    #     "debug_ColourInteract.yaml"
+    #     "debug_ColourInteract_ZINC.yaml"
     # )
 
 

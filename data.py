@@ -69,8 +69,7 @@ class MyGraph:
         cg_gen.trim_graph()
 
         rewire_edge_index = nx.relabel_nodes(
-            cg_gen.G_trimmed, dict(
-                zip(cg_gen.G_trimmed, range(self.num_nodes)))
+            cg_gen.G_trimmed, dict(zip(cg_gen.G_trimmed, range(self.num_nodes)))
         )
 
         rewire_edge_index = einops.rearrange(
@@ -97,7 +96,19 @@ class MyGraph:
 
 class ColourInteract(MyGraph):
     def __init__(
-        self, id, data, c1, c2, num_colours, distances, x=None, y=None, colours=None, seed=42, rewirer=None, normalise=True
+        self,
+        id,
+        data,
+        c1,
+        c2,
+        num_colours,
+        distances,
+        x=None,
+        y=None,
+        colours=None,
+        seed=42,
+        rewirer=None,
+        normalise=True,
     ):
         super().__init__(id, data)
 
@@ -134,8 +145,7 @@ class ColourInteract(MyGraph):
         """
         set categorical "colours", uniformly from a set of self.size num_colours
         """
-        colours = torch.randint(
-            low=0, high=self.num_colours, size=(self.num_nodes,))
+        colours = torch.randint(low=0, high=self.num_colours, size=(self.num_nodes,))
         self.colours = colours
 
     def _set_x(self, x):
@@ -158,9 +168,9 @@ class ColourInteract(MyGraph):
     def _set_y(self, y):
         """
         Compute the regression target y for the graph as:
-            \sum_{c \in colours} \sum_{i,j of colour c} c_1 exp(v_i + v_j)
+            \sum_{d} \sum_{i,j at distance 1} c_1 exp(v_i + v_j)
             +
-            \sum_{d} \sum_{i,j at distance 1} c_2 2^{-d} exp(v_i + v_j)
+            \sum_{c \in colours} \sum_{i,j of colour c} c_2 exp(v_i + v_j)
         where v_i is the value associated with node i
         Excluding self-interactions (i.e. nodes separated by distance 0).
         Sum runs over distinct pairs only (i.e. (i,j) and (j,i) are not double-counted).
@@ -183,16 +193,14 @@ class ColourInteract(MyGraph):
 
             interactions = torch.exp(self.values + self.values.T)
             interactions.fill_diagonal_(0)
+            interactions = torch.triu(interactions)
 
-            sum_values_at_1 = torch.sum(self.c1 * interactions[mask_1])
-
-            y = self.c1 * sum_values_at_1
+            y = torch.sum(self.c1 * interactions[mask_1])
 
             for color in range(self.num_colours):
                 color_mask = (self.colours == color)
 
-                same_color_matrix = color_mask.unsqueeze(
-                    1) & color_mask.unsqueeze(0)
+                same_color_matrix = color_mask.unsqueeze(1) & color_mask.unsqueeze(0)
 
                 y += torch.sum(self.c2 * interactions[same_color_matrix])
 
@@ -246,8 +254,7 @@ class ColourInteract(MyGraph):
 
                 one_colour_cayley = nx.relabel_nodes(
                     cg_gen.G_trimmed,
-                    dict(zip(cg_gen.G_trimmed, range(
-                        node_idx, node_idx + num_nodes))),
+                    dict(zip(cg_gen.G_trimmed, range(node_idx, node_idx + num_nodes))),
                 )
 
                 # Add one random edge from one_colour cayley (which has indexes range(node_idx, node_idx+num_nodes) to the rest of the graph which has indexes range(0, node_idx)) using random.randint
@@ -275,7 +282,21 @@ class ColourInteract(MyGraph):
 
 
 class SalientDists(MyGraph):
-    def __init__(self, id, data, c1, c2, c3, d, distances=None, x=None, y=None, seed=42, rewirer=None, normalise=True):
+    def __init__(
+        self,
+        id,
+        data,
+        c1,
+        c2,
+        c3,
+        d,
+        distances=None,
+        x=None,
+        y=None,
+        seed=42,
+        rewirer=None,
+        normalise=True,
+    ):
         super().__init__(id, data)
 
         torch.manual_seed(seed)
@@ -333,14 +354,17 @@ class SalientDists(MyGraph):
 
             sum_x = self.data.x + self.data.x.T
 
-            mask_1 = (dist_matrix == 1)
-            mask_d = (dist_matrix == self.d)
-            mask_other = (dist_matrix != 1) & (
-                dist_matrix != self.d) & (dist_matrix != 0)
+            mask_1 = dist_matrix == 1
+            mask_d = dist_matrix == self.d
+            mask_other = (
+                (dist_matrix != 1) & (dist_matrix != self.d) & (dist_matrix != 0)
+            )
 
-            y = torch.sum(self.c1 * torch.exp(sum_x[mask_1])) + \
-                torch.sum(self.c2 * torch.exp(sum_x[mask_d])) + \
-                torch.sum(self.c3 * torch.exp(sum_x[mask_other]))
+            y = (
+                torch.sum(self.c1 * torch.exp(sum_x[mask_1]))
+                + torch.sum(self.c2 * torch.exp(sum_x[mask_d]))
+                + torch.sum(self.c3 * torch.exp(sum_x[mask_other]))
+            )
 
             if self.normalise:
                 y = y / self.num_nodes
@@ -373,7 +397,7 @@ class SalientDists(MyGraph):
                 torch.tensor(rewire_edge_index), "e n -> n e"
             )
             self.rewire_edge_index = rewire_edge_index
-        
+
         elif rewirer == "distance_d_pairs":
             rewire_edge_index = []
 
@@ -388,33 +412,32 @@ class SalientDists(MyGraph):
             self.rewire_edge_index = rewire_edge_index
 
         elif rewirer == "aligned_cayley":
-            
             # create G1 based on distance d pairs
             g1 = nx.Graph()
             for i in self.distances:
                 g1.add_node(i)
                 for j, dist in self.distances[i].items():
                     if dist == self.d:
-                        g1.add_edge(i,j)
+                        g1.add_edge(i, j)
 
             # create G2 as trimmed Cayley expander
-                        
+
             if self.num_nodes < 2:
                 raise ValueError(
                     "Cayley graph requires at least 2 nodes, but got only {}.".format(
                         self.num_nodes
                     )
                 )
-            
+
             cg_gen = CayleyGraphGenerator(self.num_nodes)
             cg_gen.generate_cayley_graph()
             cg_gen.trim_graph()
             g2 = cg_gen.G_trimmed
-            
+
             # get correspondence between nodes
             correspondence_1_to_2 = get_correspondence(g1, g2)
-            correspondence_2_to_1 = {v:k for k,v in correspondence_1_to_2.items()}
-            
+            correspondence_2_to_1 = {v: k for k, v in correspondence_1_to_2.items()}
+
             # produce rewired edge index
 
             rewire_edge_index = nx.relabel_nodes(g2, correspondence_2_to_1)
@@ -425,7 +448,6 @@ class SalientDists(MyGraph):
             )
 
             self.rewire_edge_index = rewire_edge_index
-
 
         elif rewirer == "fully_connected":
             self.attach_fully_connected()
@@ -446,7 +468,6 @@ class SalientDists(MyGraph):
         )
 
 
-
 def count_captured_edges(g1, g2, correspondence):
     """
     Count the fraction of edges in g1 included in g2, if nodes are mapped according to correspondence
@@ -455,9 +476,9 @@ def count_captured_edges(g1, g2, correspondence):
     cnt = 0
     for edge in g1.edges:
         edge_c = (correspondence[edge[0]], correspondence[edge[1]])
-        if edge_c in g2.edges: cnt += 1
+        if edge_c in g2.edges:
+            cnt += 1
     return cnt / g1.number_of_edges()
-
 
 
 def get_correspondence(g1, g2):
@@ -472,19 +493,23 @@ def get_correspondence(g1, g2):
     g2_nodes_remaining = set(g2.nodes)
 
     for node1 in correspondence:
-                
-        if correspondence[node1] is not None: continue
+        if correspondence[node1] is not None:
+            continue
 
         node2 = g2_nodes_remaining.pop()
         correspondence[node1] = node2
         neighbs = list(g1.neighbors(node1))
 
         for neighb in neighbs:
-            if correspondence[neighb] is not None: continue
-            candidates = list(node for node in g2.neighbors(node2) if node in g2_nodes_remaining)
-            if len(candidates) == 0: continue
+            if correspondence[neighb] is not None:
+                continue
+            candidates = list(
+                node for node in g2.neighbors(node2) if node in g2_nodes_remaining
+            )
+            if len(candidates) == 0:
+                continue
             cand = candidates[0]
             g2_nodes_remaining.remove(cand)
-            correspondence[neighb] = cand             
+            correspondence[neighb] = cand
 
     return correspondence
