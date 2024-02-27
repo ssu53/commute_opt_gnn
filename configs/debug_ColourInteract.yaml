@@ -3,11 +3,11 @@ data:
   c1: 1.0
   c2: 5.0
   num_colours: 5
-  train_size: 5000
-  val_size: 1000
+  train_size: 2000
+  val_size: 300
   min_train_nodes: 100
-  max_train_nodes: 200
-  max_val_nodes: 300
+  max_train_nodes: 150
+  max_val_nodes: 200
 
 model:
   hidden_channels: 8
@@ -16,10 +16,10 @@ model:
 
 train:
   lr: 0.001
-  num_epochs: 500
+  num_epochs: 200
   print_every: 10
-  train_batch_size: 512
-  val_batch_size: 512
+  train_batch_size: 128
+  val_batch_size: 128
 
 run:
   silent: False

@@ -365,14 +365,14 @@ def run_experiment(config_fn):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config_fn", help="configuration file name", type=str)
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("--config_fn", help="configuration file name", type=str)
+    # args = parser.parse_args()
 
-    run_experiment(args.config_fn)
+    # run_experiment(args.config_fn)
 
-    # quick_run(["aligned_cayley", "cayley", "fully_connected", "interacting_pairs"],
-    #   "debug_SalientDists.yaml")
+    quick_run(["aligned_cayley", "cayley", "interacting_pairs"],
+      "debug_SalientDists.yaml")
     # quick_run(
     #     ["cayley", "fully_connected", "cayley_clusters"], "debug_ColourInteract.yaml"
     # )
