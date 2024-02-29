@@ -1,4 +1,5 @@
 import random
+from collections import Counter
 
 import networkx as nx
 import numpy as np
@@ -30,13 +31,13 @@ def get_data_SalientDists(
     if dataset == "ZINC":
         all_graphs_train = ZINC(
             root="data/data_zinc",
-            subset=True,
+            subset=False,
             split="train",
         )
 
         all_graphs_val = ZINC(
             root="data/data_zinc",
-            subset=True,
+            subset=False,
             split="val",
         )
     elif dataset == "LRGB":
@@ -186,40 +187,64 @@ def get_data_ColourInteract(
     graphs_train = [[] for _ in rewirers]
     graphs_val = [[] for _ in rewirers]
 
+    graphs_train_bins = {i: [] for i in range(min_train_nodes, max_train_nodes)}
+
+    for graph in all_graphs_train:
+        if graph.num_nodes in graphs_train_bins:
+            nx_graph = to_networkx(graph, to_undirected=True)
+            if nx.is_connected(nx_graph):
+                graphs_train_bins[graph.num_nodes].append(graph)
+
+    all_graphs_train = []
+    for _, graphs in graphs_train_bins.items():
+        all_graphs_train.extend(random.sample(graphs, train_size//(max_train_nodes-min_train_nodes)))
+
+    assert len(all_graphs_train) == train_size, f"len(all_graphs_train) = {len(all_graphs_train)}, train_size = {train_size}"
+    print(f"Number of training graphs: {len(all_graphs_train)}")
+    print(f"Train graph sizes: {Counter([graph.num_nodes for graph in all_graphs_train])}")
+
     pbar = tqdm(
         total=train_size * len(rewirers),
         desc=f"Generating training data",
         disable=verbose,
     )
     for i in range(len(all_graphs_train)):
-        nx_graph = to_networkx(all_graphs_train[i], to_undirected=True)
-        conditions = (
-            nx.is_connected(nx_graph)
-            and nx_graph.number_of_nodes() > min_train_nodes
-            and nx_graph.number_of_nodes() < max_train_nodes
-        )
         for num, rewirer in enumerate(rewirers):
-            if len(graphs_train[num]) < train_size and conditions:
-                g = ColourInteract(
-                    id=i,
-                    data=all_graphs_train[i],
-                    c1=c1,
-                    c2=c2,
-                    num_colours=num_colours,
-                    seed=seed,
-                    rewirer=rewirer,
-                    normalise=normalise,
-                )
+            g = ColourInteract(
+                id=i,
+                data=all_graphs_train[i],
+                c1=c1,
+                c2=c2,
+                num_colours=num_colours,
+                seed=seed,
+                rewirer=rewirer,
+                normalise=normalise,
+            )
 
-                graphs_train[num].append(g.to_torch_data().to(device))
-                pbar.update(1)
-            else:
-                break
+            graphs_train[num].append(g.to_torch_data().to(device))
+            pbar.update(1)
 
     for num in range(len(rewirers)):
         assert (
             len(graphs_train[num]) == train_size
         ), f"len(graphs_train[{num}]) = {len(graphs_train[num])}, train_size = {train_size}"
+
+
+    graphs_val_bins = {i: [] for i in range(min_val_nodes, max_val_nodes)}
+
+    for graph in all_graphs_val:
+        if graph.num_nodes in graphs_val_bins:
+            nx_graph = to_networkx(graph, to_undirected=True)
+            if nx.is_connected(nx_graph):
+                graphs_val_bins[graph.num_nodes].append(graph)
+
+    all_graphs_val = []
+    for _, graphs in graphs_val_bins.items():
+        all_graphs_val.extend(random.sample(graphs, val_size//(max_val_nodes-min_val_nodes)))
+
+    assert len(all_graphs_val) == val_size, f"len(all_graphs_val) = {len(all_graphs_val)}, val_size = {val_size}"
+    print(f"Number of validation graphs: {len(all_graphs_train)}")
+    print(f"Val graph sizes: {Counter([graph.num_nodes for graph in all_graphs_val])}")
 
     pbar = tqdm(
         total=val_size * len(rewirers),
@@ -227,28 +252,20 @@ def get_data_ColourInteract(
         disable=verbose,
     )
     for i in range(len(all_graphs_val)):
-        nx_graph = to_networkx(all_graphs_val[i], to_undirected=True)
-        conditions = (
-            nx.is_connected(nx_graph)
-            and nx_graph.number_of_nodes() > min_val_nodes
-            and nx_graph.number_of_nodes() < max_val_nodes
-        )
-
         for num, rewirer in enumerate(rewirers):
-            if len(graphs_val[num]) < val_size and conditions:
-                g = ColourInteract(
-                    id=i,
-                    data=all_graphs_val[i],
-                    c1=c1,
-                    c2=c2,
-                    num_colours=num_colours,
-                    seed=seed,
-                    rewirer=rewirer,
-                    normalise=normalise
-                )
+            g = ColourInteract(
+                id=i,
+                data=all_graphs_val[i],
+                c1=c1,
+                c2=c2,
+                num_colours=num_colours,
+                seed=seed,
+                rewirer=rewirer,
+                normalise=normalise
+            )
 
-                graphs_val[num].append(g.to_torch_data().to(device))
-                pbar.update(1)
+            graphs_val[num].append(g.to_torch_data().to(device))
+            pbar.update(1)
 
     for num in range(len(rewirers)):
         assert (

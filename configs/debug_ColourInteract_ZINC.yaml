@@ -11,11 +11,11 @@ data:
   c2: 5.0
   num_colours: 4
   train_size: 5000
-  val_size: 100
+  val_size: 500
   min_train_nodes: 20
   max_train_nodes: 30
-  min_val_nodes: 20
-  max_val_nodes: 30
+  min_val_nodes: 30
+  max_val_nodes: 35
   seeds: [73, 47, 23]
   rewirers: ["cayley_clusters", "cayley", "fully_connected"]
   normalise: True
