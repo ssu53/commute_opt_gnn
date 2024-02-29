@@ -8,17 +8,16 @@ data:
   dataset : 'LRGB'
   c1: 1.0
   c2: 5.0
-  num_colours: 3
-  train_size: 2000
-  val_size: 300
-  min_train_nodes: 100
-  max_train_nodes: 150
-  max_val_nodes: 200
+  num_colours: 4
+  train_size: 1000
+  val_size: 100
+  min_train_nodes: 75
+  max_train_nodes: 125
+  min_val_nodes: 125
+  max_val_nodes: 150
   seeds: [73, 47, 23]
   rewirers: ["cayley_clusters", "cayley", "fully_connected"]
-  normalise: False
-
-
+  normalise: True
 
 model:
   hidden_channels: 8
@@ -29,11 +28,11 @@ model:
   
 
 train:
-  lr: 0.001
+  lr: 0.0001
   num_epochs: 200
   print_every: 10
-  train_batch_size: 512
-  val_batch_size: 512
+  train_batch_size: 32
+  val_batch_size: 32
 
 run:
-  silent: True
+  silent: False

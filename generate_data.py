@@ -199,9 +199,10 @@ def get_data_ColourInteract(
     for _, graphs in graphs_train_bins.items():
         all_graphs_train.extend(random.sample(graphs, train_size//(max_train_nodes-min_train_nodes)))
 
-    assert len(all_graphs_train) == train_size, f"len(all_graphs_train) = {len(all_graphs_train)}, train_size = {train_size}"
     print(f"Number of training graphs: {len(all_graphs_train)}")
     print(f"Train graph sizes: {Counter([graph.num_nodes for graph in all_graphs_train])}")
+    assert len(all_graphs_train) == train_size, f"len(all_graphs_train) = {len(all_graphs_train)}, train_size = {train_size}"
+
 
     pbar = tqdm(
         total=train_size * len(rewirers),

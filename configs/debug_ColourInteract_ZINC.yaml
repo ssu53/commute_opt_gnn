@@ -3,7 +3,6 @@ wandb:
   project: 'ColourInteract Sweeps'
   entity: 'commute_opt_gnn'
 
-
 data:
   name: ColourInteract
   dataset : 'ZINC'

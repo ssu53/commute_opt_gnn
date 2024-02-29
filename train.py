@@ -386,14 +386,14 @@ def main():
     #   "debug_SalientDists_ZINC.yaml"
     #   )
     
-    # quick_run(
-    #     [
-    #         "fully_connected",
-    #         "cayley",
-    #         "cayley_clusters",
-    #     ],
-    #     "debug_ColourInteract.yaml"
-    # )
+    quick_run(
+        [
+            # "fully_connected",
+            # "cayley",
+            # "cayley_clusters",
+        ],
+        "debug_ColourInteract.yaml"
+    )
 
 
 if __name__ == "__main__":
