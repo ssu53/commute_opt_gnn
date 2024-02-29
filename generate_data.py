@@ -1,3 +1,5 @@
+import random
+
 import networkx as nx
 import numpy as np
 import torch
@@ -145,9 +147,11 @@ def get_data_ColourInteract(
     val_size,
     c1,
     c2,
+    normalise,
     num_colours,
     min_train_nodes,
     max_train_nodes,
+    min_val_nodes,
     max_val_nodes,
     seed,
     device,
@@ -157,13 +161,13 @@ def get_data_ColourInteract(
     if dataset == "ZINC":
         all_graphs_train = ZINC(
             root="data/data_zinc",
-            subset=True,
+            subset=False,
             split="train",
         )
 
         all_graphs_val = ZINC(
             root="data/data_zinc",
-            subset=True,
+            subset=False,
             split="val",
         )
     elif dataset == "LRGB":
@@ -204,12 +208,18 @@ def get_data_ColourInteract(
                     num_colours=num_colours,
                     seed=seed,
                     rewirer=rewirer,
+                    normalise=normalise,
                 )
 
                 graphs_train[num].append(g.to_torch_data().to(device))
                 pbar.update(1)
             else:
                 break
+
+    for num in range(len(rewirers)):
+        assert (
+            len(graphs_train[num]) == train_size
+        ), f"len(graphs_train[{num}]) = {len(graphs_train[num])}, train_size = {train_size}"
 
     pbar = tqdm(
         total=val_size * len(rewirers),
@@ -220,7 +230,7 @@ def get_data_ColourInteract(
         nx_graph = to_networkx(all_graphs_val[i], to_undirected=True)
         conditions = (
             nx.is_connected(nx_graph)
-            and nx_graph.number_of_nodes() > max_train_nodes
+            and nx_graph.number_of_nodes() > min_val_nodes
             and nx_graph.number_of_nodes() < max_val_nodes
         )
 
@@ -234,10 +244,16 @@ def get_data_ColourInteract(
                     num_colours=num_colours,
                     seed=seed,
                     rewirer=rewirer,
+                    normalise=normalise
                 )
 
                 graphs_val[num].append(g.to_torch_data().to(device))
                 pbar.update(1)
+
+    for num in range(len(rewirers)):
+        assert (
+            len(graphs_val[num]) == val_size
+        ), f"len(graphs_val[{num}]) = {len(graphs_val[num])}, val_size = {val_size}"
 
     return graphs_train, graphs_val
 

@@ -20,8 +20,8 @@ train:
   lr: 0.001
   num_epochs: 200
   print_every: 10
-  train_batch_size: 128
-  val_batch_size: 128
+  train_batch_size: 512
+  val_batch_size: 512
 
 run:
   silent: False

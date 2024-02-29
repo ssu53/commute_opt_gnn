@@ -1,26 +1,38 @@
+wandb:
+  experiment_name: ''
+  project: 'ColourInteract Sweeps'
+  entity: 'commute_opt_gnn'
+
+
 data:
+  name: ColourInteract
   dataset : 'ZINC'
   c1: 1.0
-  c2: 20.0
-  num_colours: 3
+  c2: 5.0
+  num_colours: 4
   train_size: 5000
-  val_size: 200
-  min_train_nodes: 15
-  max_train_nodes: 25
-  max_val_nodes: 35
-
+  val_size: 100
+  min_train_nodes: 20
+  max_train_nodes: 30
+  min_val_nodes: 20
+  max_val_nodes: 30
+  seeds: [73, 47, 23]
+  rewirers: ["cayley_clusters", "cayley", "fully_connected"]
+  normalise: True
+  
 model:
   hidden_channels: 8
   num_layers: 5
   drop_prob: 0.0
   global_pool_aggr: global_mean_pool
+  approach: "interleave"
 
 train:
   lr: 0.001
   num_epochs: 200
   print_every: 10
-  train_batch_size: 128
-  val_batch_size: 128
+  train_batch_size: 512
+  val_batch_size: 512
 
 run:
   silent: False

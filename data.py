@@ -102,13 +102,13 @@ class ColourInteract(MyGraph):
         c1,
         c2,
         num_colours,
+        normalise,
         distances=None,
         x=None,
         y=None,
         colours=None,
         seed=42,
         rewirer=None,
-        normalise=True,
     ):
         super().__init__(id, data)
 

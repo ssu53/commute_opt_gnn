@@ -73,13 +73,13 @@ def train_eval_loop(
                     wandb.log({"train/loss": train_loss})
 
     print(
-        f"Minimum validation loss at epoch {min(epoch2valloss, key=epoch2valloss.get)}: {min(epoch2valloss.values())}"
+        f"Minimum val loss at epoch {min(epoch2valloss, key=epoch2valloss.get)}: {min(epoch2valloss.values())}"
     )
 
-    print(f"Final loss at epoch {num_epochs}: {min(epoch2valloss.values())}")
+    print(f"Final val loss at epoch {num_epochs}: {epoch2valloss[num_epochs]}")
 
     if verbose:
-        print("Train / Validation loss by epoch")
+        print("Train / Val loss by epoch")
         print(
             "\n".join(
                 "{!r}: {:.3f} / {:.3f}".format(
@@ -122,6 +122,7 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
             d=config.data.d,
             min_train_nodes=config.data.min_train_nodes,
             max_train_nodes=config.data.max_train_nodes,
+            min_val_nodes=config.data.min_val_nodes,
             max_val_nodes=config.data.max_val_nodes,
             train_size=config.data.train_size,
             val_size=config.data.val_size,
@@ -136,9 +137,11 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
             device=device,
             c1=config.data.c1,
             c2=config.data.c2,
+            normalise=config.data.normalise,
             num_colours=config.data.num_colours,
             min_train_nodes=config.data.min_train_nodes,
             max_train_nodes=config.data.max_train_nodes,
+            min_val_nodes=config.data.min_val_nodes,
             max_val_nodes=config.data.max_val_nodes,
             train_size=config.data.train_size,
             val_size=config.data.val_size,
@@ -186,7 +189,7 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
         lr=config.train.lr,
         num_epochs=config.train.num_epochs,
         print_every=config.train.print_every,
-        verbose=True,
+        verbose=not config.run.silent,
         log_wandb=False,
     )
 
@@ -224,7 +227,7 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
             lr=config.train.lr,
             num_epochs=config.train.num_epochs,
             print_every=config.train.print_every,
-            verbose=True,
+            verbose=not config.run.silent,
             log_wandb=False,
         )
 
@@ -283,9 +286,11 @@ def run_experiment(config_fn):
                     device=device,
                     c1=config.data.c1,
                     c2=config.data.c2,
+                    normalise=config.data.normalise,
                     num_colours=config.data.num_colours,
                     min_train_nodes=config.data.min_train_nodes,
                     max_train_nodes=config.data.max_train_nodes,
+                    min_val_nodes=config.data.min_val_nodes,
                     max_val_nodes=config.data.max_val_nodes,
                     train_size=config.data.train_size,
                     val_size=config.data.val_size,
@@ -324,13 +329,11 @@ def run_experiment(config_fn):
                     project=config.wandb.project,
                     entity=config.wandb.entity,
                     config=config,
-                    group=config.wandb.experiment_name
-                    + f"-{config.model.approach}-rewired-with-{rewirer}",
+                    group=f"{config.data.dataset}-{config.model.approach}-rewired-with-{rewirer}",
                 )
 
                 wandb.run.name = (
-                    config.wandb.experiment_name
-                    + f"-{config.model.approach}-rewired-with-{rewirer}-seed-{seed}"
+                    f"{config.data.dataset}-{config.model.approach}-rewired-with-{rewirer}-seed-{seed}"
                 )
 
                 model = GINModel(
@@ -368,25 +371,25 @@ def run_experiment(config_fn):
 
 def main():
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--config_fn", help="configuration file name", type=str)
-    # args = parser.parse_args()
-    # run_experiment(args.config_fn)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config_fn", help="configuration file name", type=str)
+    args = parser.parse_args()
+    run_experiment(args.config_fn)
 
-    quick_run(
-        [
-            "cayley",
-            # "fully_connected",
-            "aligned_cayley",
-            # "interacting_pairs"
-        ],
-      "debug_SalientDists_ZINC.yaml"
-      )
-    
     # quick_run(
     #     [
     #         "cayley",
     #         # "fully_connected",
+    #         "aligned_cayley",
+    #         # "interacting_pairs"
+    #     ],
+    #   "debug_SalientDists_ZINC.yaml"
+    #   )
+    
+    # quick_run(
+    #     [
+    #         "fully_connected",
+    #         "cayley",
     #         "cayley_clusters",
     #     ],
     #     "debug_ColourInteract.yaml"
