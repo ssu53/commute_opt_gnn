@@ -7,7 +7,7 @@ data:
   name: ColourInteract
   dataset : 'LRGB'
   c1: 1.0
-  c2: 5.0
+  c2: 50.0
   num_colours: 4
   train_size: 1000
   val_size: 100
@@ -15,9 +15,9 @@ data:
   max_train_nodes: 125
   min_val_nodes: 125
   max_val_nodes: 150
-  seeds: [73, 47, 23]
-  rewirers: ["cayley_clusters", "cayley", "fully_connected"]
+  rewirers: ["cayley_clusters", "cayley"]
   normalise: True
+  seed: 91
 
 model:
   hidden_channels: 8
@@ -25,12 +25,13 @@ model:
   drop_prob: 0.0
   global_pool_aggr: global_mean_pool
   approach: "interleave"
+  seeds: [73, 47, 23]
   
 
 train:
   lr: 0.0001
   num_epochs: 200
-  print_every: 10
+  print_every: 1
   train_batch_size: 32
   val_batch_size: 32
 

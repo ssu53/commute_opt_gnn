@@ -107,13 +107,8 @@ class ColourInteract(MyGraph):
         x=None,
         y=None,
         colours=None,
-        seed=42,
-        rewirer=None,
     ):
         super().__init__(id, data)
-
-        torch.manual_seed(seed)
-        random.seed(seed)
 
         self.c1 = c1
         self.c2 = c2
@@ -128,7 +123,6 @@ class ColourInteract(MyGraph):
 
         self._set_x(x)
         self._set_y(y)
-        self.attach_rewirer(rewirer)
 
     def _set_values(self):
         """
@@ -254,9 +248,7 @@ class ColourInteract(MyGraph):
                     dict(zip(cg_gen.G_trimmed, range(node_idx, node_idx + num_nodes))),
                 )
 
-                # Add one random edge from one_colour cayley (which has indexes range(node_idx, node_idx+num_nodes) to the rest of the graph which has indexes range(0, node_idx)) using random.randint
                 if node_idx > 0:
-                    # pass
                     one_colour_cayley.add_edge(
                         random.randint(node_idx, node_idx + num_nodes - 1),
                         random.randint(0, node_idx - 1),

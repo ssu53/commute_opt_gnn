@@ -8,11 +8,11 @@ from torch_geometric.datasets import ZINC, LRGBDataset
 from torch_geometric.utils import to_networkx
 from tqdm import tqdm
 
+import wandb
 from data import ColourInteract, SalientDists
 
 
 def get_data_SalientDists(
-    rewirers: list,
     dataset: str,
     train_size,
     val_size,
@@ -143,7 +143,6 @@ def get_data_SalientDists(
 
 def get_data_ColourInteract(
     dataset,
-    rewirers,
     train_size,
     val_size,
     c1,
@@ -154,7 +153,6 @@ def get_data_ColourInteract(
     max_train_nodes,
     min_val_nodes,
     max_val_nodes,
-    seed,
     device,
     verbose=False,
 ):
@@ -184,20 +182,22 @@ def get_data_ColourInteract(
             split="val",
         )
 
-    graphs_train = [[] for _ in rewirers]
-    graphs_val = [[] for _ in rewirers]
+    graphs_train = []
+    graphs_val = []
 
-    graphs_train_bins = {i: [] for i in range(min_train_nodes, max_train_nodes)}
+    num_bins = (max_train_nodes-min_train_nodes)//5
+
+    graphs_train_bins = {i: [] for i in range(min_train_nodes//5, (min_train_nodes//5)+num_bins)}
 
     for graph in all_graphs_train:
-        if graph.num_nodes in graphs_train_bins:
+        if graph.num_nodes // 5 in graphs_train_bins:
             nx_graph = to_networkx(graph, to_undirected=True)
             if nx.is_connected(nx_graph):
-                graphs_train_bins[graph.num_nodes].append(graph)
+                graphs_train_bins[graph.num_nodes // 5].append(graph)
 
     all_graphs_train = []
     for _, graphs in graphs_train_bins.items():
-        all_graphs_train.extend(random.sample(graphs, train_size//(max_train_nodes-min_train_nodes)))
+        all_graphs_train.extend(random.sample(graphs, train_size//num_bins))
 
     print(f"Number of training graphs: {len(all_graphs_train)}")
     print(f"Train graph sizes: {Counter([graph.num_nodes for graph in all_graphs_train])}")
@@ -205,73 +205,72 @@ def get_data_ColourInteract(
 
 
     pbar = tqdm(
-        total=train_size * len(rewirers),
+        total=train_size,
         desc=f"Generating training data",
         disable=verbose,
     )
     for i in range(len(all_graphs_train)):
-        for num, rewirer in enumerate(rewirers):
-            g = ColourInteract(
-                id=i,
-                data=all_graphs_train[i],
-                c1=c1,
-                c2=c2,
-                num_colours=num_colours,
-                seed=seed,
-                rewirer=rewirer,
-                normalise=normalise,
-            )
+        g = ColourInteract(
+            id=i,
+            data=all_graphs_train[i],
+            c1=c1,
+            c2=c2,
+            num_colours=num_colours,
+            normalise=normalise,
+        )
 
-            graphs_train[num].append(g.to_torch_data().to(device))
-            pbar.update(1)
+        graphs_train.append(g)
+        pbar.update(1)
 
-    for num in range(len(rewirers)):
-        assert (
-            len(graphs_train[num]) == train_size
-        ), f"len(graphs_train[{num}]) = {len(graphs_train[num])}, train_size = {train_size}"
+    assert (
+        len(graphs_train) == train_size
+    ), f"len(graphs_train) = {len(graphs_train)}, train_size = {train_size}"
 
 
-    graphs_val_bins = {i: [] for i in range(min_val_nodes, max_val_nodes)}
+    num_bins = (max_val_nodes - min_val_nodes)//5
+    graphs_val_bins = {i: [] for i in range(min_val_nodes//5, (min_val_nodes//5)+num_bins)}
+    print(graphs_val_bins)
 
     for graph in all_graphs_val:
-        if graph.num_nodes in graphs_val_bins:
+        if graph.num_nodes // 5 in graphs_val_bins:
             nx_graph = to_networkx(graph, to_undirected=True)
             if nx.is_connected(nx_graph):
-                graphs_val_bins[graph.num_nodes].append(graph)
+                graphs_val_bins[graph.num_nodes // 5].append(graph)
 
     all_graphs_val = []
     for _, graphs in graphs_val_bins.items():
-        all_graphs_val.extend(random.sample(graphs, val_size//(max_val_nodes-min_val_nodes)))
+        try:
+            all_graphs_val.extend(random.sample(graphs, val_size//num_bins))
+        except:
+            raise Exception(f"len(graphs) of size {_} = {len(graphs)}, val_size//num_bins = {val_size//num_bins}")
 
-    assert len(all_graphs_val) == val_size, f"len(all_graphs_val) = {len(all_graphs_val)}, val_size = {val_size}"
+
     print(f"Number of validation graphs: {len(all_graphs_train)}")
     print(f"Val graph sizes: {Counter([graph.num_nodes for graph in all_graphs_val])}")
+    assert len(all_graphs_val) == val_size, f"len(all_graphs_val) = {len(all_graphs_val)}, val_size = {val_size}"
+
 
     pbar = tqdm(
-        total=val_size * len(rewirers),
+        total=val_size,
         desc=f"Generating validation data",
         disable=verbose,
     )
     for i in range(len(all_graphs_val)):
-        for num, rewirer in enumerate(rewirers):
-            g = ColourInteract(
-                id=i,
-                data=all_graphs_val[i],
-                c1=c1,
-                c2=c2,
-                num_colours=num_colours,
-                seed=seed,
-                rewirer=rewirer,
-                normalise=normalise
-            )
+        g = ColourInteract(
+            id=i,
+            data=all_graphs_val[i],
+            c1=c1,
+            c2=c2,
+            num_colours=num_colours,
+            normalise=normalise
+        )
 
-            graphs_val[num].append(g.to_torch_data().to(device))
-            pbar.update(1)
+        graphs_val.append(g)
+        pbar.update(1)
 
-    for num in range(len(rewirers)):
-        assert (
-            len(graphs_val[num]) == val_size
-        ), f"len(graphs_val[{num}]) = {len(graphs_val[num])}, val_size = {val_size}"
+    assert (
+        len(graphs_val) == val_size
+    ), f"len(graphs_val) = {len(graphs_val)}, val_size = {val_size}"
 
     return graphs_train, graphs_val
 
@@ -297,6 +296,7 @@ def main():
     print(
         f"train targets: {np.mean([g.y.cpu() for g in graphs_train]):.2f} +/- {np.std([g.y.cpu() for g in graphs_train]):.3f}"
     )
+
     print(
         f"val targets: {np.mean([g.y.cpu() for g in graphs_val]):.2f} +/- {np.std([g.y.cpu() for g in graphs_val]):.3f}"
     )

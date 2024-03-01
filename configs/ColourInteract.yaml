@@ -1,0 +1,38 @@
+wandb:
+  experiment_name: ''
+  project: 'ColourInteract Sweeps Friday'
+  entity: 'commute_opt_gnn'
+
+data:
+  name: ColourInteract
+  dataset : 'LRGB'
+  c1: 1.0
+  c2s: [0.01, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 100.0]
+  num_colours: 4
+  train_size: 1500
+  val_size: 300
+  min_train_nodes: 75
+  max_train_nodes: 125
+  min_val_nodes: 125
+  max_val_nodes: 175
+  rewirers: ["cayley_clusters", "cayley"]
+  normalise: True
+  seed: 93
+
+model:
+  hidden_channels: 8
+  num_layers: 5
+  drop_prob: 0.1
+  global_pool_aggr: global_mean_pool
+  approaches: ["only_diff"]
+  seeds: [17, 47, 23]
+  
+train:
+  lr: 0.0001
+  num_epochs: 400
+  print_every: 5
+  train_batch_size: 32
+  val_batch_size: 32
+
+run:
+  silent: False

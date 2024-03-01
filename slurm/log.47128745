@@ -1,0 +1,598 @@
+JobID: 47128745
+======
+Time: Thu Feb 29 21:33:50 GMT 2024
+Running on master node: cpu-q-6
+{'wandb': {'experiment_name': '', 'project': 'ColourInteract Sweeps Final', 'entity': 'commute_opt_gnn'}, 'data': {'name': 'ColourInteract', 'dataset': 'LRGB', 'c1': 1.0, 'c2s': [20.0, 50.0], 'num_colours': 4, 'train_size': 1000, 'val_size': 100, 'min_train_nodes': 75, 'max_train_nodes': 125, 'min_val_nodes': 125, 'max_val_nodes': 150, 'seeds': [73, 47, 23], 'rewirers': ['cayley_clusters', 'cayley'], 'normalise': True, 'c2': 20.0, 'seed': 73}, 'model': {'hidden_channels': 8, 'num_layers': 5, 'drop_prob': 0.0, 'global_pool_aggr': 'global_mean_pool', 'approaches': ['only_original', 'interleave'], 'approach': 'only_original'}, 'train': {'lr': 0.0001, 'num_epochs': 200, 'print_every': 10, 'train_batch_size': 32, 'val_batch_size': 32}, 'run': {'silent': False}}
+Device: cpu
+No rewiring.
+Loading data...
+Number of training graphs: 1000
+Train graph sizes: Counter({75: 20, 76: 20, 77: 20, 78: 20, 79: 20, 80: 20, 81: 20, 82: 20, 83: 20, 84: 20, 85: 20, 86: 20, 87: 20, 88: 20, 89: 20, 90: 20, 91: 20, 92: 20, 93: 20, 94: 20, 95: 20, 96: 20, 97: 20, 98: 20, 99: 20, 100: 20, 101: 20, 102: 20, 103: 20, 104: 20, 105: 20, 106: 20, 107: 20, 108: 20, 109: 20, 110: 20, 111: 20, 112: 20, 113: 20, 114: 20, 115: 20, 116: 20, 117: 20, 118: 20, 119: 20, 120: 20, 121: 20, 122: 20, 123: 20, 124: 20})
+Number of validation graphs: 1000
+Val graph sizes: Counter({125: 4, 126: 4, 127: 4, 128: 4, 129: 4, 130: 4, 131: 4, 132: 4, 133: 4, 134: 4, 135: 4, 136: 4, 137: 4, 138: 4, 139: 4, 140: 4, 141: 4, 142: 4, 143: 4, 144: 4, 145: 4, 146: 4, 147: 4, 148: 4, 149: 4})
+train targets: 691.74 +/- 113.227
+val targets: 933.62 +/- 42.325
+Rewirer None with seed 73
+Using MSE Loss...
+Minimum val loss at epoch 40: 409.23574924468994
+Final val loss at epoch 200: 1016.7696990966797
+Train / Val loss by epoch
+10: 495764.000 / 605347.781
+20: 150076.891 / 174658.574
+30: 13234.759 / 11909.628
+40: 643.695 / 409.236
+50: 370.401 / 824.422
+60: 257.156 / 925.234
+70: 180.558 / 954.238
+80: 128.067 / 945.725
+90: 93.282 / 952.007
+100: 75.623 / 981.922
+110: 64.901 / 994.723
+120: 59.152 / 1013.008
+130: 56.631 / 1022.188
+140: 54.880 / 1007.385
+150: 54.036 / 1006.236
+160: 54.506 / 992.161
+170: 56.355 / 993.429
+180: 59.519 / 1002.245
+190: 64.000 / 1000.577
+200: 68.040 / 1016.770
+{None: [{'best': 409.23574924468994, 'end': 1016.7696990966797}]}
+{'wandb': {'experiment_name': '', 'project': 'ColourInteract Sweeps Final', 'entity': 'commute_opt_gnn'}, 'data': {'name': 'ColourInteract', 'dataset': 'LRGB', 'c1': 1.0, 'c2s': [20.0, 50.0], 'num_colours': 4, 'train_size': 1000, 'val_size': 100, 'min_train_nodes': 75, 'max_train_nodes': 125, 'min_val_nodes': 125, 'max_val_nodes': 150, 'seeds': [73, 47, 23], 'rewirers': ['cayley_clusters', 'cayley'], 'normalise': True, 'c2': 20.0, 'seed': 47}, 'model': {'hidden_channels': 8, 'num_layers': 5, 'drop_prob': 0.0, 'global_pool_aggr': 'global_mean_pool', 'approaches': ['only_original', 'interleave'], 'approach': 'only_original'}, 'train': {'lr': 0.0001, 'num_epochs': 200, 'print_every': 10, 'train_batch_size': 32, 'val_batch_size': 32}, 'run': {'silent': False}}
+Device: cpu
+No rewiring.
+Loading data...
+Number of training graphs: 1000
+Train graph sizes: Counter({75: 20, 76: 20, 77: 20, 78: 20, 79: 20, 80: 20, 81: 20, 82: 20, 83: 20, 84: 20, 85: 20, 86: 20, 87: 20, 88: 20, 89: 20, 90: 20, 91: 20, 92: 20, 93: 20, 94: 20, 95: 20, 96: 20, 97: 20, 98: 20, 99: 20, 100: 20, 101: 20, 102: 20, 103: 20, 104: 20, 105: 20, 106: 20, 107: 20, 108: 20, 109: 20, 110: 20, 111: 20, 112: 20, 113: 20, 114: 20, 115: 20, 116: 20, 117: 20, 118: 20, 119: 20, 120: 20, 121: 20, 122: 20, 123: 20, 124: 20})
+Number of validation graphs: 1000
+Val graph sizes: Counter({125: 4, 126: 4, 127: 4, 128: 4, 129: 4, 130: 4, 131: 4, 132: 4, 133: 4, 134: 4, 135: 4, 136: 4, 137: 4, 138: 4, 139: 4, 140: 4, 141: 4, 142: 4, 143: 4, 144: 4, 145: 4, 146: 4, 147: 4, 148: 4, 149: 4})
+train targets: 660.08 +/- 113.124
+val targets: 951.84 +/- 50.615
+Rewirer None with seed 47
+Using MSE Loss...
+Minimum val loss at epoch 200: 535.285026550293
+Final val loss at epoch 200: 535.285026550293
+Train / Val loss by epoch
+10: 374214.188 / 498419.688
+20: 98290.172 / 135812.121
+30: 8329.895 / 13841.437
+40: 842.968 / 2323.437
+50: 480.993 / 1592.605
+60: 444.224 / 1443.575
+70: 420.412 / 1337.704
+80: 395.743 / 1242.374
+90: 374.166 / 1160.320
+100: 356.772 / 1085.429
+110: 344.072 / 1024.372
+120: 331.514 / 975.592
+130: 321.366 / 924.564
+140: 309.641 / 866.669
+150: 297.954 / 799.754
+160: 290.425 / 731.511
+170: 282.091 / 690.388
+180: 273.511 / 636.376
+190: 266.282 / 578.297
+200: 257.012 / 535.285
+{None: [{'best': 535.285026550293, 'end': 535.285026550293}]}
+{'wandb': {'experiment_name': '', 'project': 'ColourInteract Sweeps Final', 'entity': 'commute_opt_gnn'}, 'data': {'name': 'ColourInteract', 'dataset': 'LRGB', 'c1': 1.0, 'c2s': [20.0, 50.0], 'num_colours': 4, 'train_size': 1000, 'val_size': 100, 'min_train_nodes': 75, 'max_train_nodes': 125, 'min_val_nodes': 125, 'max_val_nodes': 150, 'seeds': [73, 47, 23], 'rewirers': ['cayley_clusters', 'cayley'], 'normalise': True, 'c2': 20.0, 'seed': 23}, 'model': {'hidden_channels': 8, 'num_layers': 5, 'drop_prob': 0.0, 'global_pool_aggr': 'global_mean_pool', 'approaches': ['only_original', 'interleave'], 'approach': 'only_original'}, 'train': {'lr': 0.0001, 'num_epochs': 200, 'print_every': 10, 'train_batch_size': 32, 'val_batch_size': 32}, 'run': {'silent': False}}
+Device: cpu
+No rewiring.
+Loading data...
+Number of training graphs: 1000
+Train graph sizes: Counter({75: 20, 76: 20, 77: 20, 78: 20, 79: 20, 80: 20, 81: 20, 82: 20, 83: 20, 84: 20, 85: 20, 86: 20, 87: 20, 88: 20, 89: 20, 90: 20, 91: 20, 92: 20, 93: 20, 94: 20, 95: 20, 96: 20, 97: 20, 98: 20, 99: 20, 100: 20, 101: 20, 102: 20, 103: 20, 104: 20, 105: 20, 106: 20, 107: 20, 108: 20, 109: 20, 110: 20, 111: 20, 112: 20, 113: 20, 114: 20, 115: 20, 116: 20, 117: 20, 118: 20, 119: 20, 120: 20, 121: 20, 122: 20, 123: 20, 124: 20})
+Number of validation graphs: 1000
+Val graph sizes: Counter({125: 4, 126: 4, 127: 4, 128: 4, 129: 4, 130: 4, 131: 4, 132: 4, 133: 4, 134: 4, 135: 4, 136: 4, 137: 4, 138: 4, 139: 4, 140: 4, 141: 4, 142: 4, 143: 4, 144: 4, 145: 4, 146: 4, 147: 4, 148: 4, 149: 4})
+train targets: 697.49 +/- 108.888
+val targets: 986.45 +/- 60.943
+Rewirer None with seed 23
+Using MSE Loss...
+Minimum val loss at epoch 200: 941.7681655883789
+Final val loss at epoch 200: 941.7681655883789
+Train / Val loss by epoch
+10: 255668.641 / 330703.180
+20: 37500.051 / 51336.416
+30: 1920.690 / 3639.993
+40: 426.210 / 1355.622
+50: 325.121 / 1285.702
+60: 285.914 / 1278.590
+70: 252.634 / 1262.110
+80: 219.302 / 1246.852
+90: 181.127 / 1225.851
+100: 150.145 / 1196.955
+110: 126.756 / 1164.745
+120: 107.237 / 1135.479
+130: 90.733 / 1108.206
+140: 78.293 / 1077.776
+150: 68.619 / 1046.188
+160: 59.981 / 1026.057
+170: 52.361 / 1000.052
+180: 45.508 / 983.210
+190: 38.890 / 954.737
+200: 33.317 / 941.768
+{None: [{'best': 941.7681655883789, 'end': 941.7681655883789}]}
+{'wandb': {'experiment_name': '', 'project': 'ColourInteract Sweeps Final', 'entity': 'commute_opt_gnn'}, 'data': {'name': 'ColourInteract', 'dataset': 'LRGB', 'c1': 1.0, 'c2s': [20.0, 50.0], 'num_colours': 4, 'train_size': 1000, 'val_size': 100, 'min_train_nodes': 75, 'max_train_nodes': 125, 'min_val_nodes': 125, 'max_val_nodes': 150, 'seeds': [73, 47, 23], 'rewirers': ['cayley_clusters', 'cayley'], 'normalise': True, 'c2': 20.0, 'seed': 73}, 'model': {'hidden_channels': 8, 'num_layers': 5, 'drop_prob': 0.0, 'global_pool_aggr': 'global_mean_pool', 'approaches': ['only_original', 'interleave'], 'approach': 'interleave'}, 'train': {'lr': 0.0001, 'num_epochs': 200, 'print_every': 10, 'train_batch_size': 32, 'val_batch_size': 32}, 'run': {'silent': False}}
+Device: cpu
+Loading data...
+Number of training graphs: 1000
+Train graph sizes: Counter({75: 20, 76: 20, 77: 20, 78: 20, 79: 20, 80: 20, 81: 20, 82: 20, 83: 20, 84: 20, 85: 20, 86: 20, 87: 20, 88: 20, 89: 20, 90: 20, 91: 20, 92: 20, 93: 20, 94: 20, 95: 20, 96: 20, 97: 20, 98: 20, 99: 20, 100: 20, 101: 20, 102: 20, 103: 20, 104: 20, 105: 20, 106: 20, 107: 20, 108: 20, 109: 20, 110: 20, 111: 20, 112: 20, 113: 20, 114: 20, 115: 20, 116: 20, 117: 20, 118: 20, 119: 20, 120: 20, 121: 20, 122: 20, 123: 20, 124: 20})
+Number of validation graphs: 1000
+Val graph sizes: Counter({125: 4, 126: 4, 127: 4, 128: 4, 129: 4, 130: 4, 131: 4, 132: 4, 133: 4, 134: 4, 135: 4, 136: 4, 137: 4, 138: 4, 139: 4, 140: 4, 141: 4, 142: 4, 143: 4, 144: 4, 145: 4, 146: 4, 147: 4, 148: 4, 149: 4})
+train targets: 691.74 +/- 113.228
+val targets: 933.62 +/- 42.325
+Rewirer cayley_clusters with seed 73
+Using MSE Loss...
+Minimum val loss at epoch 40: 398.3950204849243
+Final val loss at epoch 200: 971.1306610107422
+Train / Val loss by epoch
+10: 493293.000 / 608656.578
+20: 151400.047 / 182185.879
+30: 14092.216 / 15140.792
+40: 413.128 / 398.395
+50: 235.649 / 632.433
+60: 209.376 / 669.782
+70: 179.697 / 678.912
+80: 160.078 / 695.759
+90: 141.688 / 711.874
+100: 124.300 / 731.618
+110: 108.993 / 751.874
+120: 95.484 / 774.066
+130: 86.418 / 802.125
+140: 80.251 / 823.889
+150: 77.101 / 841.410
+160: 76.618 / 871.238
+170: 78.190 / 899.282
+180: 83.233 / 921.245
+190: 88.713 / 956.202
+200: 95.243 / 971.131
+Rewirer cayley with seed 73
+Using MSE Loss...
+Minimum val loss at epoch 60: 433.997953414917
+Final val loss at epoch 200: 636.8004302978516
+Train / Val loss by epoch
+10: 246484.281 / 296647.711
+20: 31715.252 / 39961.929
+30: 578.885 / 1400.926
+40: 63.097 / 484.776
+50: 72.942 / 452.928
+60: 73.900 / 433.998
+70: 81.256 / 434.942
+80: 92.775 / 448.630
+90: 105.476 / 473.270
+100: 119.518 / 511.211
+110: 133.194 / 547.661
+120: 146.531 / 570.890
+130: 159.401 / 589.960
+140: 169.661 / 612.758
+150: 176.709 / 643.187
+160: 177.894 / 658.979
+170: 179.707 / 674.764
+180: 179.346 / 681.302
+190: 174.748 / 660.606
+200: 171.686 / 636.800
+{'cayley': [{'best': 433.997953414917, 'end': 636.8004302978516}],
+ 'cayley_clusters': [{'best': 398.3950204849243, 'end': 971.1306610107422}]}
+{'wandb': {'experiment_name': '', 'project': 'ColourInteract Sweeps Final', 'entity': 'commute_opt_gnn'}, 'data': {'name': 'ColourInteract', 'dataset': 'LRGB', 'c1': 1.0, 'c2s': [20.0, 50.0], 'num_colours': 4, 'train_size': 1000, 'val_size': 100, 'min_train_nodes': 75, 'max_train_nodes': 125, 'min_val_nodes': 125, 'max_val_nodes': 150, 'seeds': [73, 47, 23], 'rewirers': ['cayley_clusters', 'cayley'], 'normalise': True, 'c2': 20.0, 'seed': 47}, 'model': {'hidden_channels': 8, 'num_layers': 5, 'drop_prob': 0.0, 'global_pool_aggr': 'global_mean_pool', 'approaches': ['only_original', 'interleave'], 'approach': 'interleave'}, 'train': {'lr': 0.0001, 'num_epochs': 200, 'print_every': 10, 'train_batch_size': 32, 'val_batch_size': 32}, 'run': {'silent': False}}
+Device: cpu
+Loading data...
+Number of training graphs: 1000
+Train graph sizes: Counter({75: 20, 76: 20, 77: 20, 78: 20, 79: 20, 80: 20, 81: 20, 82: 20, 83: 20, 84: 20, 85: 20, 86: 20, 87: 20, 88: 20, 89: 20, 90: 20, 91: 20, 92: 20, 93: 20, 94: 20, 95: 20, 96: 20, 97: 20, 98: 20, 99: 20, 100: 20, 101: 20, 102: 20, 103: 20, 104: 20, 105: 20, 106: 20, 107: 20, 108: 20, 109: 20, 110: 20, 111: 20, 112: 20, 113: 20, 114: 20, 115: 20, 116: 20, 117: 20, 118: 20, 119: 20, 120: 20, 121: 20, 122: 20, 123: 20, 124: 20})
+Number of validation graphs: 1000
+Val graph sizes: Counter({125: 4, 126: 4, 127: 4, 128: 4, 129: 4, 130: 4, 131: 4, 132: 4, 133: 4, 134: 4, 135: 4, 136: 4, 137: 4, 138: 4, 139: 4, 140: 4, 141: 4, 142: 4, 143: 4, 144: 4, 145: 4, 146: 4, 147: 4, 148: 4, 149: 4})
+train targets: 660.08 +/- 113.124
+val targets: 951.84 +/- 50.615
+Rewirer cayley_clusters with seed 47
+Using MSE Loss...
+Minimum val loss at epoch 200: 1210.054672241211
+Final val loss at epoch 200: 1210.054672241211
+Train / Val loss by epoch
+10: 374475.406 / 498083.141
+20: 100071.172 / 141205.002
+30: 8483.230 / 15306.331
+40: 740.550 / 2527.260
+50: 397.823 / 1722.495
+60: 381.562 / 1624.879
+70: 379.647 / 1572.831
+80: 375.689 / 1502.536
+90: 368.420 / 1423.150
+100: 359.823 / 1369.422
+110: 350.979 / 1328.250
+120: 342.487 / 1301.609
+130: 332.574 / 1280.580
+140: 324.142 / 1261.399
+150: 315.563 / 1252.193
+160: 305.202 / 1267.940
+170: 293.605 / 1258.740
+180: 282.069 / 1240.174
+190: 270.743 / 1224.399
+200: 262.096 / 1210.055
+Rewirer cayley with seed 47
+Using MSE Loss...
+Minimum val loss at epoch 200: 1520.1761627197266
+Final val loss at epoch 200: 1520.1761627197266
+Train / Val loss by epoch
+10: 433275.125 / 574515.469
+20: 124369.078 / 184903.160
+30: 11841.381 / 28259.108
+40: 732.686 / 6066.591
+50: 243.045 / 3878.947
+60: 195.373 / 3285.831
+70: 177.176 / 2920.162
+80: 163.392 / 2636.175
+90: 152.983 / 2402.334
+100: 145.423 / 2208.021
+110: 139.905 / 2058.272
+120: 135.255 / 1947.107
+130: 130.556 / 1850.058
+140: 125.349 / 1772.645
+150: 120.161 / 1706.892
+160: 112.727 / 1654.322
+170: 103.698 / 1620.783
+180: 93.445 / 1576.865
+190: 83.202 / 1549.754
+200: 71.156 / 1520.176
+{'cayley': [{'best': 1520.1761627197266, 'end': 1520.1761627197266}],
+ 'cayley_clusters': [{'best': 1210.054672241211, 'end': 1210.054672241211}]}
+{'wandb': {'experiment_name': '', 'project': 'ColourInteract Sweeps Final', 'entity': 'commute_opt_gnn'}, 'data': {'name': 'ColourInteract', 'dataset': 'LRGB', 'c1': 1.0, 'c2s': [20.0, 50.0], 'num_colours': 4, 'train_size': 1000, 'val_size': 100, 'min_train_nodes': 75, 'max_train_nodes': 125, 'min_val_nodes': 125, 'max_val_nodes': 150, 'seeds': [73, 47, 23], 'rewirers': ['cayley_clusters', 'cayley'], 'normalise': True, 'c2': 20.0, 'seed': 23}, 'model': {'hidden_channels': 8, 'num_layers': 5, 'drop_prob': 0.0, 'global_pool_aggr': 'global_mean_pool', 'approaches': ['only_original', 'interleave'], 'approach': 'interleave'}, 'train': {'lr': 0.0001, 'num_epochs': 200, 'print_every': 10, 'train_batch_size': 32, 'val_batch_size': 32}, 'run': {'silent': False}}
+Device: cpu
+Loading data...
+Number of training graphs: 1000
+Train graph sizes: Counter({75: 20, 76: 20, 77: 20, 78: 20, 79: 20, 80: 20, 81: 20, 82: 20, 83: 20, 84: 20, 85: 20, 86: 20, 87: 20, 88: 20, 89: 20, 90: 20, 91: 20, 92: 20, 93: 20, 94: 20, 95: 20, 96: 20, 97: 20, 98: 20, 99: 20, 100: 20, 101: 20, 102: 20, 103: 20, 104: 20, 105: 20, 106: 20, 107: 20, 108: 20, 109: 20, 110: 20, 111: 20, 112: 20, 113: 20, 114: 20, 115: 20, 116: 20, 117: 20, 118: 20, 119: 20, 120: 20, 121: 20, 122: 20, 123: 20, 124: 20})
+Number of validation graphs: 1000
+Val graph sizes: Counter({125: 4, 126: 4, 127: 4, 128: 4, 129: 4, 130: 4, 131: 4, 132: 4, 133: 4, 134: 4, 135: 4, 136: 4, 137: 4, 138: 4, 139: 4, 140: 4, 141: 4, 142: 4, 143: 4, 144: 4, 145: 4, 146: 4, 147: 4, 148: 4, 149: 4})
+train targets: 697.49 +/- 108.888
+val targets: 986.45 +/- 60.943
+Rewirer cayley_clusters with seed 23
+Using MSE Loss...
+Minimum val loss at epoch 60: 777.2554092407227
+Final val loss at epoch 200: 837.0016288757324
+Train / Val loss by epoch
+10: 254674.516 / 325687.547
+20: 37434.590 / 52469.879
+30: 1680.521 / 3356.940
+40: 275.332 / 893.757
+50: 209.059 / 782.509
+60: 184.168 / 777.255
+70: 163.074 / 781.076
+80: 146.472 / 783.737
+90: 134.084 / 792.851
+100: 125.699 / 802.651
+110: 118.617 / 810.759
+120: 112.757 / 829.179
+130: 105.790 / 831.908
+140: 98.695 / 843.541
+150: 90.625 / 849.102
+160: 82.761 / 845.371
+170: 74.679 / 847.770
+180: 65.721 / 856.281
+190: 57.814 / 845.790
+200: 50.651 / 837.002
+Rewirer cayley with seed 23
+Using MSE Loss...
+Minimum val loss at epoch 190: 501.8255487680435
+Final val loss at epoch 200: 504.9805557727814
+Train / Val loss by epoch
+10: 483347.625 / 630684.195
+20: 159071.781 / 213418.414
+30: 17611.303 / 29165.031
+40: 1038.020 / 2815.070
+50: 392.475 / 1094.501
+60: 273.493 / 885.477
+70: 201.765 / 798.927
+80: 152.902 / 728.686
+90: 118.947 / 679.286
+100: 92.846 / 644.321
+110: 72.189 / 617.301
+120: 54.892 / 596.850
+130: 40.223 / 574.958
+140: 28.325 / 558.067
+150: 19.229 / 541.142
+160: 13.011 / 527.078
+170: 8.922 / 525.939
+180: 6.335 / 514.672
+190: 4.700 / 501.826
+200: 3.535 / 504.981
+{'cayley': [{'best': 501.8255487680435, 'end': 504.9805557727814}],
+ 'cayley_clusters': [{'best': 777.2554092407227, 'end': 837.0016288757324}]}
+{'wandb': {'experiment_name': '', 'project': 'ColourInteract Sweeps Final', 'entity': 'commute_opt_gnn'}, 'data': {'name': 'ColourInteract', 'dataset': 'LRGB', 'c1': 1.0, 'c2s': [20.0, 50.0], 'num_colours': 4, 'train_size': 1000, 'val_size': 100, 'min_train_nodes': 75, 'max_train_nodes': 125, 'min_val_nodes': 125, 'max_val_nodes': 150, 'seeds': [73, 47, 23], 'rewirers': ['cayley_clusters', 'cayley'], 'normalise': True, 'c2': 50.0, 'seed': 73}, 'model': {'hidden_channels': 8, 'num_layers': 5, 'drop_prob': 0.0, 'global_pool_aggr': 'global_mean_pool', 'approaches': ['only_original', 'interleave'], 'approach': 'only_original'}, 'train': {'lr': 0.0001, 'num_epochs': 200, 'print_every': 10, 'train_batch_size': 32, 'val_batch_size': 32}, 'run': {'silent': False}}
+Device: cpu
+No rewiring.
+Loading data...
+Number of training graphs: 1000
+Train graph sizes: Counter({75: 20, 76: 20, 77: 20, 78: 20, 79: 20, 80: 20, 81: 20, 82: 20, 83: 20, 84: 20, 85: 20, 86: 20, 87: 20, 88: 20, 89: 20, 90: 20, 91: 20, 92: 20, 93: 20, 94: 20, 95: 20, 96: 20, 97: 20, 98: 20, 99: 20, 100: 20, 101: 20, 102: 20, 103: 20, 104: 20, 105: 20, 106: 20, 107: 20, 108: 20, 109: 20, 110: 20, 111: 20, 112: 20, 113: 20, 114: 20, 115: 20, 116: 20, 117: 20, 118: 20, 119: 20, 120: 20, 121: 20, 122: 20, 123: 20, 124: 20})
+Number of validation graphs: 1000
+Val graph sizes: Counter({125: 4, 126: 4, 127: 4, 128: 4, 129: 4, 130: 4, 131: 4, 132: 4, 133: 4, 134: 4, 135: 4, 136: 4, 137: 4, 138: 4, 139: 4, 140: 4, 141: 4, 142: 4, 143: 4, 144: 4, 145: 4, 146: 4, 147: 4, 148: 4, 149: 4})
+train targets: 1725.08 +/- 283.052
+val targets: 2329.84 +/- 105.849
+Rewirer None with seed 73
+Using MSE Loss...
+Minimum val loss at epoch 60: 1303.5624237060547
+Final val loss at epoch 200: 5848.400390625
+Train / Val loss by epoch
+10: 3910526.250 / 4793097.562
+20: 2516064.500 / 3044592.500
+30: 1093634.625 / 1298567.406
+40: 254429.250 / 281350.371
+50: 23447.523 / 17209.547
+60: 1084.710 / 1303.562
+70: 357.889 / 3162.626
+80: 265.142 / 4029.102
+90: 211.286 / 4505.113
+100: 180.594 / 4648.994
+110: 165.427 / 4731.968
+120: 156.773 / 4787.724
+130: 153.394 / 4877.457
+140: 150.955 / 4993.256
+150: 152.917 / 5093.782
+160: 160.094 / 5193.269
+170: 171.400 / 5366.060
+180: 184.524 / 5492.332
+190: 195.616 / 5655.411
+200: 209.564 / 5848.400
+{None: [{'best': 1303.5624237060547, 'end': 5848.400390625}]}
+{'wandb': {'experiment_name': '', 'project': 'ColourInteract Sweeps Final', 'entity': 'commute_opt_gnn'}, 'data': {'name': 'ColourInteract', 'dataset': 'LRGB', 'c1': 1.0, 'c2s': [20.0, 50.0], 'num_colours': 4, 'train_size': 1000, 'val_size': 100, 'min_train_nodes': 75, 'max_train_nodes': 125, 'min_val_nodes': 125, 'max_val_nodes': 150, 'seeds': [73, 47, 23], 'rewirers': ['cayley_clusters', 'cayley'], 'normalise': True, 'c2': 50.0, 'seed': 47}, 'model': {'hidden_channels': 8, 'num_layers': 5, 'drop_prob': 0.0, 'global_pool_aggr': 'global_mean_pool', 'approaches': ['only_original', 'interleave'], 'approach': 'only_original'}, 'train': {'lr': 0.0001, 'num_epochs': 200, 'print_every': 10, 'train_batch_size': 32, 'val_batch_size': 32}, 'run': {'silent': False}}
+Device: cpu
+No rewiring.
+Loading data...
+Number of training graphs: 1000
+Train graph sizes: Counter({75: 20, 76: 20, 77: 20, 78: 20, 79: 20, 80: 20, 81: 20, 82: 20, 83: 20, 84: 20, 85: 20, 86: 20, 87: 20, 88: 20, 89: 20, 90: 20, 91: 20, 92: 20, 93: 20, 94: 20, 95: 20, 96: 20, 97: 20, 98: 20, 99: 20, 100: 20, 101: 20, 102: 20, 103: 20, 104: 20, 105: 20, 106: 20, 107: 20, 108: 20, 109: 20, 110: 20, 111: 20, 112: 20, 113: 20, 114: 20, 115: 20, 116: 20, 117: 20, 118: 20, 119: 20, 120: 20, 121: 20, 122: 20, 123: 20, 124: 20})
+Number of validation graphs: 1000
+Val graph sizes: Counter({125: 4, 126: 4, 127: 4, 128: 4, 129: 4, 130: 4, 131: 4, 132: 4, 133: 4, 134: 4, 135: 4, 136: 4, 137: 4, 138: 4, 139: 4, 140: 4, 141: 4, 142: 4, 143: 4, 144: 4, 145: 4, 146: 4, 147: 4, 148: 4, 149: 4})
+train targets: 1646.18 +/- 282.736
+val targets: 2375.42 +/- 126.531
+Rewirer None with seed 47
+Using MSE Loss...
+Minimum val loss at epoch 200: 8191.0048828125
+Final val loss at epoch 200: 8191.0048828125
+Train / Val loss by epoch
+10: 3490323.250 / 4617389.688
+20: 2184840.500 / 2914016.750
+30: 913737.375 / 1265014.594
+40: 209722.547 / 326686.312
+50: 28462.096 / 59563.946
+60: 5662.443 / 18847.590
+70: 3372.305 / 13334.504
+80: 3072.514 / 12172.593
+90: 2947.571 / 11576.804
+100: 2810.604 / 11087.092
+110: 2600.582 / 10739.043
+120: 2423.672 / 10529.942
+130: 2270.964 / 10397.809
+140: 2145.407 / 10059.255
+150: 2039.520 / 9688.526
+160: 1958.760 / 9444.377
+170: 1885.342 / 9186.000
+180: 1808.801 / 8887.498
+190: 1713.021 / 8481.079
+200: 1588.321 / 8191.005
+{None: [{'best': 8191.0048828125, 'end': 8191.0048828125}]}
+{'wandb': {'experiment_name': '', 'project': 'ColourInteract Sweeps Final', 'entity': 'commute_opt_gnn'}, 'data': {'name': 'ColourInteract', 'dataset': 'LRGB', 'c1': 1.0, 'c2s': [20.0, 50.0], 'num_colours': 4, 'train_size': 1000, 'val_size': 100, 'min_train_nodes': 75, 'max_train_nodes': 125, 'min_val_nodes': 125, 'max_val_nodes': 150, 'seeds': [73, 47, 23], 'rewirers': ['cayley_clusters', 'cayley'], 'normalise': True, 'c2': 50.0, 'seed': 23}, 'model': {'hidden_channels': 8, 'num_layers': 5, 'drop_prob': 0.0, 'global_pool_aggr': 'global_mean_pool', 'approaches': ['only_original', 'interleave'], 'approach': 'only_original'}, 'train': {'lr': 0.0001, 'num_epochs': 200, 'print_every': 10, 'train_batch_size': 32, 'val_batch_size': 32}, 'run': {'silent': False}}
+Device: cpu
+No rewiring.
+Loading data...
+Number of training graphs: 1000
+Train graph sizes: Counter({75: 20, 76: 20, 77: 20, 78: 20, 79: 20, 80: 20, 81: 20, 82: 20, 83: 20, 84: 20, 85: 20, 86: 20, 87: 20, 88: 20, 89: 20, 90: 20, 91: 20, 92: 20, 93: 20, 94: 20, 95: 20, 96: 20, 97: 20, 98: 20, 99: 20, 100: 20, 101: 20, 102: 20, 103: 20, 104: 20, 105: 20, 106: 20, 107: 20, 108: 20, 109: 20, 110: 20, 111: 20, 112: 20, 113: 20, 114: 20, 115: 20, 116: 20, 117: 20, 118: 20, 119: 20, 120: 20, 121: 20, 122: 20, 123: 20, 124: 20})
+Number of validation graphs: 1000
+Val graph sizes: Counter({125: 4, 126: 4, 127: 4, 128: 4, 129: 4, 130: 4, 131: 4, 132: 4, 133: 4, 134: 4, 135: 4, 136: 4, 137: 4, 138: 4, 139: 4, 140: 4, 141: 4, 142: 4, 143: 4, 144: 4, 145: 4, 146: 4, 147: 4, 148: 4, 149: 4})
+train targets: 1739.31 +/- 272.175
+val targets: 2461.63 +/- 152.326
+Rewirer None with seed 23
+Using MSE Loss...
+Minimum val loss at epoch 200: 5171.6097412109375
+Final val loss at epoch 200: 5171.6097412109375
+Train / Val loss by epoch
+10: 3242708.500 / 4232258.688
+20: 1754068.750 / 2324170.250
+30: 593395.562 / 817720.797
+40: 103643.297 / 164749.324
+50: 12282.393 / 28146.971
+60: 3143.384 / 11480.999
+70: 1946.343 / 9427.154
+80: 1584.082 / 8604.825
+90: 1412.385 / 8067.987
+100: 1286.011 / 7765.432
+110: 1179.447 / 7541.054
+120: 1061.814 / 7336.321
+130: 933.290 / 7119.024
+140: 812.229 / 6888.916
+150: 714.692 / 6663.868
+160: 634.394 / 6408.528
+170: 558.222 / 6142.776
+180: 479.142 / 5830.563
+190: 401.692 / 5484.397
+200: 341.346 / 5171.610
+{None: [{'best': 5171.6097412109375, 'end': 5171.6097412109375}]}
+{'wandb': {'experiment_name': '', 'project': 'ColourInteract Sweeps Final', 'entity': 'commute_opt_gnn'}, 'data': {'name': 'ColourInteract', 'dataset': 'LRGB', 'c1': 1.0, 'c2s': [20.0, 50.0], 'num_colours': 4, 'train_size': 1000, 'val_size': 100, 'min_train_nodes': 75, 'max_train_nodes': 125, 'min_val_nodes': 125, 'max_val_nodes': 150, 'seeds': [73, 47, 23], 'rewirers': ['cayley_clusters', 'cayley'], 'normalise': True, 'c2': 50.0, 'seed': 73}, 'model': {'hidden_channels': 8, 'num_layers': 5, 'drop_prob': 0.0, 'global_pool_aggr': 'global_mean_pool', 'approaches': ['only_original', 'interleave'], 'approach': 'interleave'}, 'train': {'lr': 0.0001, 'num_epochs': 200, 'print_every': 10, 'train_batch_size': 32, 'val_batch_size': 32}, 'run': {'silent': False}}
+Device: cpu
+Loading data...
+Number of training graphs: 1000
+Train graph sizes: Counter({75: 20, 76: 20, 77: 20, 78: 20, 79: 20, 80: 20, 81: 20, 82: 20, 83: 20, 84: 20, 85: 20, 86: 20, 87: 20, 88: 20, 89: 20, 90: 20, 91: 20, 92: 20, 93: 20, 94: 20, 95: 20, 96: 20, 97: 20, 98: 20, 99: 20, 100: 20, 101: 20, 102: 20, 103: 20, 104: 20, 105: 20, 106: 20, 107: 20, 108: 20, 109: 20, 110: 20, 111: 20, 112: 20, 113: 20, 114: 20, 115: 20, 116: 20, 117: 20, 118: 20, 119: 20, 120: 20, 121: 20, 122: 20, 123: 20, 124: 20})
+Number of validation graphs: 1000
+Val graph sizes: Counter({125: 4, 126: 4, 127: 4, 128: 4, 129: 4, 130: 4, 131: 4, 132: 4, 133: 4, 134: 4, 135: 4, 136: 4, 137: 4, 138: 4, 139: 4, 140: 4, 141: 4, 142: 4, 143: 4, 144: 4, 145: 4, 146: 4, 147: 4, 148: 4, 149: 4})
+train targets: 1725.08 +/- 283.052
+val targets: 2329.84 +/- 105.849
+Rewirer cayley_clusters with seed 73
+Using MSE Loss...
+Minimum val loss at epoch 60: 1377.5458450317383
+Final val loss at epoch 200: 5196.158386230469
+Train / Val loss by epoch
+10: 3904568.250 / 4802270.188
+20: 2525790.000 / 3088181.938
+30: 1124033.125 / 1367294.938
+40: 273581.156 / 321775.242
+50: 27704.350 / 27970.648
+60: 1501.320 / 1377.546
+70: 875.047 / 2353.998
+80: 797.917 / 2893.986
+90: 714.924 / 3276.985
+100: 667.927 / 3641.195
+110: 647.936 / 3904.582
+120: 638.016 / 4060.364
+130: 637.221 / 4227.364
+140: 634.227 / 4443.656
+150: 636.730 / 4560.008
+160: 642.011 / 4680.327
+170: 648.806 / 4706.601
+180: 658.370 / 4847.033
+190: 664.602 / 4968.037
+200: 667.737 / 5196.158
+Rewirer cayley with seed 73
+Using MSE Loss...
+Minimum val loss at epoch 60: 1688.9980773925781
+Final val loss at epoch 200: 5994.108947753906
+Train / Val loss by epoch
+10: 3078750.000 / 3758374.562
+20: 1606680.375 / 1981980.594
+30: 488442.562 / 608323.781
+40: 59918.605 / 69158.531
+50: 2207.786 / 2284.593
+60: 775.807 / 1688.998
+70: 913.450 / 2440.309
+80: 862.476 / 2964.761
+90: 804.021 / 3614.901
+100: 773.094 / 4096.428
+110: 745.248 / 4346.270
+120: 705.910 / 4512.009
+130: 648.067 / 4883.820
+140: 650.066 / 5760.470
+150: 666.453 / 5587.464
+160: 675.117 / 5744.958
+170: 685.703 / 5930.852
+180: 698.581 / 6004.237
+190: 713.175 / 5934.431
+200: 733.163 / 5994.109
+{'cayley': [{'best': 1688.9980773925781, 'end': 5994.108947753906}],
+ 'cayley_clusters': [{'best': 1377.5458450317383, 'end': 5196.158386230469}]}
+{'wandb': {'experiment_name': '', 'project': 'ColourInteract Sweeps Final', 'entity': 'commute_opt_gnn'}, 'data': {'name': 'ColourInteract', 'dataset': 'LRGB', 'c1': 1.0, 'c2s': [20.0, 50.0], 'num_colours': 4, 'train_size': 1000, 'val_size': 100, 'min_train_nodes': 75, 'max_train_nodes': 125, 'min_val_nodes': 125, 'max_val_nodes': 150, 'seeds': [73, 47, 23], 'rewirers': ['cayley_clusters', 'cayley'], 'normalise': True, 'c2': 50.0, 'seed': 47}, 'model': {'hidden_channels': 8, 'num_layers': 5, 'drop_prob': 0.0, 'global_pool_aggr': 'global_mean_pool', 'approaches': ['only_original', 'interleave'], 'approach': 'interleave'}, 'train': {'lr': 0.0001, 'num_epochs': 200, 'print_every': 10, 'train_batch_size': 32, 'val_batch_size': 32}, 'run': {'silent': False}}
+Device: cpu
+Loading data...
+Number of training graphs: 1000
+Train graph sizes: Counter({75: 20, 76: 20, 77: 20, 78: 20, 79: 20, 80: 20, 81: 20, 82: 20, 83: 20, 84: 20, 85: 20, 86: 20, 87: 20, 88: 20, 89: 20, 90: 20, 91: 20, 92: 20, 93: 20, 94: 20, 95: 20, 96: 20, 97: 20, 98: 20, 99: 20, 100: 20, 101: 20, 102: 20, 103: 20, 104: 20, 105: 20, 106: 20, 107: 20, 108: 20, 109: 20, 110: 20, 111: 20, 112: 20, 113: 20, 114: 20, 115: 20, 116: 20, 117: 20, 118: 20, 119: 20, 120: 20, 121: 20, 122: 20, 123: 20, 124: 20})
+Number of validation graphs: 1000
+Val graph sizes: Counter({125: 4, 126: 4, 127: 4, 128: 4, 129: 4, 130: 4, 131: 4, 132: 4, 133: 4, 134: 4, 135: 4, 136: 4, 137: 4, 138: 4, 139: 4, 140: 4, 141: 4, 142: 4, 143: 4, 144: 4, 145: 4, 146: 4, 147: 4, 148: 4, 149: 4})
+train targets: 1646.18 +/- 282.736
+val targets: 2375.42 +/- 126.531
+Rewirer cayley_clusters with seed 47
+Using MSE Loss...
+Minimum val loss at epoch 200: 8261.623413085938
+Final val loss at epoch 200: 8261.623413085938
+Train / Val loss by epoch
+10: 3491498.500 / 4618048.062
+20: 2197913.500 / 2954747.000
+30: 929697.125 / 1303640.688
+40: 224544.562 / 343533.359
+50: 31205.516 / 60255.601
+60: 5550.462 / 16340.507
+70: 2870.701 / 10653.968
+80: 2514.285 / 9858.617
+90: 2437.787 / 9643.701
+100: 2370.476 / 9659.772
+110: 2290.681 / 9407.360
+120: 2201.379 / 9023.147
+130: 2123.239 / 8862.701
+140: 2032.537 / 8766.095
+150: 1936.634 / 8606.465
+160: 1848.202 / 8467.605
+170: 1757.165 / 8442.339
+180: 1667.363 / 8376.665
+190: 1584.392 / 8376.085
+200: 1509.356 / 8261.623
+Rewirer cayley with seed 47
+Using MSE Loss...
+Minimum val loss at epoch 200: 9369.5048828125
+Final val loss at epoch 200: 9369.5048828125
+Train / Val loss by epoch
+10: 3660126.250 / 4835427.938
+20: 2300899.500 / 3146618.188
+30: 965111.562 / 1416919.844
+40: 219885.750 / 386446.195
+50: 25605.773 / 75782.992
+60: 3032.031 / 24200.639
+70: 1177.131 / 15988.170
+80: 899.976 / 13748.448
+90: 776.494 / 12764.188
+100: 716.984 / 12211.082
+110: 672.811 / 11835.777
+120: 629.895 / 11580.732
+130: 589.368 / 11342.244
+140: 551.111 / 11073.416
+150: 508.190 / 10804.036
+160: 470.882 / 10470.468
+170: 438.215 / 10188.369
+180: 409.347 / 9902.729
+190: 380.785 / 9686.155
+200: 352.516 / 9369.505
+{'cayley': [{'best': 9369.5048828125, 'end': 9369.5048828125}],
+ 'cayley_clusters': [{'best': 8261.623413085938, 'end': 8261.623413085938}]}
+{'wandb': {'experiment_name': '', 'project': 'ColourInteract Sweeps Final', 'entity': 'commute_opt_gnn'}, 'data': {'name': 'ColourInteract', 'dataset': 'LRGB', 'c1': 1.0, 'c2s': [20.0, 50.0], 'num_colours': 4, 'train_size': 1000, 'val_size': 100, 'min_train_nodes': 75, 'max_train_nodes': 125, 'min_val_nodes': 125, 'max_val_nodes': 150, 'seeds': [73, 47, 23], 'rewirers': ['cayley_clusters', 'cayley'], 'normalise': True, 'c2': 50.0, 'seed': 23}, 'model': {'hidden_channels': 8, 'num_layers': 5, 'drop_prob': 0.0, 'global_pool_aggr': 'global_mean_pool', 'approaches': ['only_original', 'interleave'], 'approach': 'interleave'}, 'train': {'lr': 0.0001, 'num_epochs': 200, 'print_every': 10, 'train_batch_size': 32, 'val_batch_size': 32}, 'run': {'silent': False}}
+Device: cpu
+Loading data...
+Number of training graphs: 1000
+Train graph sizes: Counter({75: 20, 76: 20, 77: 20, 78: 20, 79: 20, 80: 20, 81: 20, 82: 20, 83: 20, 84: 20, 85: 20, 86: 20, 87: 20, 88: 20, 89: 20, 90: 20, 91: 20, 92: 20, 93: 20, 94: 20, 95: 20, 96: 20, 97: 20, 98: 20, 99: 20, 100: 20, 101: 20, 102: 20, 103: 20, 104: 20, 105: 20, 106: 20, 107: 20, 108: 20, 109: 20, 110: 20, 111: 20, 112: 20, 113: 20, 114: 20, 115: 20, 116: 20, 117: 20, 118: 20, 119: 20, 120: 20, 121: 20, 122: 20, 123: 20, 124: 20})
+Number of validation graphs: 1000
+Val graph sizes: Counter({125: 4, 126: 4, 127: 4, 128: 4, 129: 4, 130: 4, 131: 4, 132: 4, 133: 4, 134: 4, 135: 4, 136: 4, 137: 4, 138: 4, 139: 4, 140: 4, 141: 4, 142: 4, 143: 4, 144: 4, 145: 4, 146: 4, 147: 4, 148: 4, 149: 4})
+train targets: 1739.31 +/- 272.175
+val targets: 2461.63 +/- 152.326
+Rewirer cayley_clusters with seed 23
+Using MSE Loss...
+Minimum val loss at epoch 150: 6841.988952636719
+Final val loss at epoch 200: 7059.689880371094
+Train / Val loss by epoch
+10: 3239517.500 / 4216751.125
+20: 1760424.625 / 2361904.969
+30: 595720.125 / 849323.422
+40: 102874.156 / 174726.953
+50: 10401.562 / 28194.298
+60: 2068.254 / 10060.209
+70: 1312.141 / 8168.994
+80: 1131.688 / 8005.899
+90: 1009.742 / 7863.876
+100: 921.676 / 7660.919
+110: 859.932 / 7376.170
+120: 807.942 / 7128.252
+130: 751.386 / 6991.910
+140: 699.672 / 6899.313
+150: 661.712 / 6841.989
+160: 624.175 / 6859.503
+170: 585.233 / 6871.779
+180: 551.715 / 6947.613
+190: 519.318 / 7006.166
+200: 489.768 / 7059.690
+Rewirer cayley with seed 23
+Using MSE Loss...
+Minimum val loss at epoch 200: 2446.0772399902344
+Final val loss at epoch 200: 2446.0772399902344
+Train / Val loss by epoch
+10: 4020989.250 / 5259577.000
+20: 2681385.000 / 3547121.562
+30: 1238199.250 / 1710556.781
+40: 310570.656 / 482582.523
+50: 35810.520 / 78251.499
+60: 3395.098 / 14390.055
+70: 1135.964 / 6660.973
+80: 711.429 / 4936.489
+90: 525.252 / 4031.237
+100: 424.355 / 3499.590
+110: 346.259 / 3122.073
+120: 283.431 / 2926.124
+130: 245.139 / 2962.725
+140: 218.039 / 2851.244
+150: 192.782 / 2736.624
+160: 167.727 / 2650.725
+170: 140.891 / 2613.843
+180: 126.840 / 2592.619
+190: 113.402 / 2511.058
+200: 98.831 / 2446.077
+{'cayley': [{'best': 2446.0772399902344, 'end': 2446.0772399902344}],
+ 'cayley_clusters': [{'best': 6841.988952636719, 'end': 7059.689880371094}]}
+CONFIGS
+ config_file='debug_ColourInteract.yaml'
+ rewirers=[]
+ device=device(type='cpu')
+ seed=93
+ {'wandb': {'experiment_name': '', 'project': 'ColourInteract Sweeps', 'entity': 'commute_opt_gnn'}, 'data': {'name': 'ColourInteract', 'dataset': 'LRGB', 'c1': 1.0, 'c2': 5.0, 'num_colours': 4, 'train_size': 1000, 'val_size': 100, 'min_train_nodes': 75, 'max_train_nodes': 125, 'min_val_nodes': 125, 'max_val_nodes': 150, 'seeds': [73, 47, 23], 'rewirers': ['cayley_clusters', 'cayley', 'fully_connected'], 'normalise': True}, 'model': {'hidden_channels': 8, 'num_layers': 5, 'drop_prob': 0.0, 'global_pool_aggr': 'global_mean_pool', 'approach': 'interleave'}, 'train': {'lr': 0.0001, 'num_epochs': 200, 'print_every': 10, 'train_batch_size': 32, 'val_batch_size': 32}, 'run': {'silent': False}}
+Loading data...
+Number of training graphs: 1000
+Train graph sizes: Counter({75: 20, 76: 20, 77: 20, 78: 20, 79: 20, 80: 20, 81: 20, 82: 20, 83: 20, 84: 20, 85: 20, 86: 20, 87: 20, 88: 20, 89: 20, 90: 20, 91: 20, 92: 20, 93: 20, 94: 20, 95: 20, 96: 20, 97: 20, 98: 20, 99: 20, 100: 20, 101: 20, 102: 20, 103: 20, 104: 20, 105: 20, 106: 20, 107: 20, 108: 20, 109: 20, 110: 20, 111: 20, 112: 20, 113: 20, 114: 20, 115: 20, 116: 20, 117: 20, 118: 20, 119: 20, 120: 20, 121: 20, 122: 20, 123: 20, 124: 20})
+Number of validation graphs: 1000
+Val graph sizes: Counter({125: 4, 126: 4, 127: 4, 128: 4, 129: 4, 130: 4, 131: 4, 132: 4, 133: 4, 134: 4, 135: 4, 136: 4, 137: 4, 138: 4, 139: 4, 140: 4, 141: 4, 142: 4, 143: 4, 144: 4, 145: 4, 146: 4, 147: 4, 148: 4, 149: 4})
+Time: Thu Feb 29 22:02:27 GMT 2024
