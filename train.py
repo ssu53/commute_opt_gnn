@@ -127,6 +127,7 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
             c2=config.data.c2,
             c3=config.data.c3,
             d=config.data.d,
+            normalise=config.data.normalise,
             min_train_nodes=config.data.min_train_nodes,
             max_train_nodes=config.data.max_train_nodes,
             min_val_nodes=config.data.min_val_nodes,
@@ -269,7 +270,6 @@ def run_experiment(config, graphs_train, graphs_val):
 
     train_mean = np.mean([g.y.cpu() for g in graphs_train])
     train_std = np.std([g.y.cpu() for g in graphs_train])
-
     print(f"train targets: {train_mean:.2f} +/- {train_std:.3f}")
 
     val_mean = np.mean([g.y.cpu() for g in graphs_val])
@@ -310,13 +310,26 @@ def run_experiment(config, graphs_train, graphs_val):
                 graphs_val_rewirer, batch_size=config.train.val_batch_size
             )
 
-            wandb.init(
-                project=config.wandb.project,
-                entity=config.wandb.entity,
-                config=config,
-                group=f"{config.data.dataset}-{config.model.approach}-rewired-with-{rewirer}-c2-{config.data.c2}",
-            )
-            wandb.run.name = f"{config.data.dataset}-{config.model.approach}-rewired-with-{rewirer}-c2-{config.data.c2}-seed-{config.model.seed}"
+            
+            if config.data.name == "SalientDists":
+                wandb.init(
+                    project=config.wandb.project,
+                    entity=config.wandb.entity,
+                    config=config,
+                    group=f"{config.model.approach}-{rewirer}-c1-{config.data.c1}-c2-{config.data.c2}-c3-{config.data.c3}",
+                )
+                wandb.run.name = f"{config.model.approach}-{rewirer}-c1-{config.data.c1}-c2-{config.data.c2}-c3-{config.data.c3}-seed-{config.model.seed}"
+            
+            if config.data.name == "ColourInteract":
+                wandb.init(
+                    project=config.wandb.project,
+                    entity=config.wandb.entity,
+                    config=config,
+                    group=f"{config.data.dataset}-{config.model.approach}-rewired-with-{rewirer}-c2-{config.data.c2}",
+                )
+                wandb.run.name = f"{config.data.dataset}-{config.model.approach}-rewired-with-{rewirer}-c2-{config.data.c2}-seed-{config.model.seed}"
+            
+            
             wandb.log({"train/target_mean": train_mean, "train/target_std": train_std})
             wandb.log({"eval/target_mean": val_mean, "eval/target_std": val_std})
 
@@ -361,6 +374,7 @@ def main():
 
     with open(f"configs/{args.config_fn}", "r") as f:
         config = EasyDict(yaml.safe_load(f))
+    print(config)
 
     for c2 in config.data.c2s:
         set_seed(config.data.seed)
@@ -373,6 +387,7 @@ def main():
                 c2=config.data.c2,
                 c3=config.data.c3,
                 d=config.data.d,
+                normalise=config.data.normalise,
                 min_train_nodes=config.data.min_train_nodes,
                 max_train_nodes=config.data.max_train_nodes,
                 min_val_nodes=config.data.min_val_nodes,

@@ -8,7 +8,6 @@ from torch_geometric.datasets import ZINC, LRGBDataset
 from torch_geometric.utils import to_networkx
 from tqdm import tqdm
 
-import wandb
 from data import ColourInteract, SalientDists
 
 
@@ -20,11 +19,11 @@ def get_data_SalientDists(
     c2,
     c3,
     d,
+    normalise,
     min_train_nodes,
     max_train_nodes,
+    min_val_nodes,
     max_val_nodes,
-    seed,
-    device,
     verbose=False,
 ):
     print("Loading data...")
@@ -55,88 +54,101 @@ def get_data_SalientDists(
     else:
         raise NotImplementedError(f"Dataset {dataset} not implemented")
 
-    graphs_train = [[] for _ in rewirers]
-    graphs_val = [[] for _ in rewirers]
 
-    num_nodes_train = []
-    num_nodes_val = []
+    graphs_train = []
+    graphs_val = []
+
+    num_bins = (max_train_nodes-min_train_nodes)//5
+
+    graphs_train_bins = {i: [] for i in range(min_train_nodes//5, (min_train_nodes//5)+num_bins)}
+    print(graphs_train_bins)
+
+    for graph in all_graphs_train:
+        if graph.num_nodes // 5 in graphs_train_bins:
+            nx_graph = to_networkx(graph, to_undirected=True)
+            if nx.is_connected(nx_graph):
+                graphs_train_bins[graph.num_nodes // 5].append(graph)
+
+    all_graphs_train = []
+    for _, graphs in graphs_train_bins.items():
+        all_graphs_train.extend(random.sample(graphs, train_size//num_bins))
+
+    print(f"Number of training graphs: {len(all_graphs_train)}")
+    print(f"Train graph sizes: {Counter([graph.num_nodes for graph in all_graphs_train])}")
+    assert len(all_graphs_train) == train_size, f"len(all_graphs_train) = {len(all_graphs_train)}, train_size = {train_size}"
+
+
     pbar = tqdm(
-        total=train_size * len(rewirers),
+        total=train_size,
         desc=f"Generating training data",
         disable=verbose,
     )
-
-    print("Preprocessing data...")
     for i in range(len(all_graphs_train)):
-        nx_graph = to_networkx(all_graphs_train[i], to_undirected=True)
-        conditions = (
-            nx.is_connected(nx_graph)
-            and nx_graph.number_of_nodes() > min_train_nodes
-            and nx_graph.number_of_nodes() < max_train_nodes
-            and nx.diameter(nx_graph) > d
+        g = SalientDists(
+            id=i,
+            data=all_graphs_train[i],
+            c1=c1,
+            c2=c2,
+            c3=c3,
+            d=d,
+            normalise=normalise,
         )
-        for num, rewirer in enumerate(rewirers):
-            if len(graphs_train[num]) < train_size and conditions:
-                g = SalientDists(
-                    id=i,
-                    data=all_graphs_train[i],
-                    c1=c1,
-                    c2=c2,
-                    c3=c3,
-                    d=d,
-                    seed=seed,
-                    rewirer=rewirer,
-                )
 
-                graphs_train[num].append(g.to_torch_data().to(device))
-                num_nodes_train.append(g.num_nodes)
-                pbar.update(1)
+        graphs_train.append(g)
+        pbar.update(1)
 
-            else:
-                break
+    assert (
+        len(graphs_train) == train_size
+    ), f"len(graphs_train) = {len(graphs_train)}, train_size = {train_size}"
 
-    for num in range(len(rewirers)):
-        assert (
-            len(graphs_train[num]) == train_size
-        ), f"len(graphs_train[{num}]) = {len(graphs_train[num])}, train_size = {train_size}"
+
+
+    num_bins = (max_val_nodes - min_val_nodes)//5
+    graphs_val_bins = {i: [] for i in range(min_val_nodes//5, (min_val_nodes//5)+num_bins)}
+    print(graphs_val_bins)
+
+    for graph in all_graphs_val:
+        if graph.num_nodes // 5 in graphs_val_bins:
+            nx_graph = to_networkx(graph, to_undirected=True)
+            if nx.is_connected(nx_graph):
+                graphs_val_bins[graph.num_nodes // 5].append(graph)
+
+    all_graphs_val = []
+    for _, graphs in graphs_val_bins.items():
+        try:
+            all_graphs_val.extend(random.sample(graphs, val_size//num_bins))
+        except:
+            raise Exception(f"len(graphs) of size {_} = {len(graphs)}, val_size//num_bins = {val_size//num_bins}")
+
+
+    print(f"Number of validation graphs: {len(all_graphs_train)}")
+    print(f"Val graph sizes: {Counter([graph.num_nodes for graph in all_graphs_val])}")
+    assert len(all_graphs_val) == val_size, f"len(all_graphs_val) = {len(all_graphs_val)}, val_size = {val_size}"
+
 
     pbar = tqdm(
-        total=val_size * len(rewirers),
+        total=val_size,
         desc=f"Generating validation data",
         disable=verbose,
     )
     for i in range(len(all_graphs_val)):
-        nx_graph = to_networkx(all_graphs_val[i], to_undirected=True)
-        conditions = (
-            nx.is_connected(nx_graph)
-            and nx_graph.number_of_nodes() > max_train_nodes
-            and nx_graph.number_of_nodes() < max_val_nodes
-            and nx.diameter(nx_graph) > d
+        g = SalientDists(
+            id=i,
+            data=all_graphs_val[i],
+            c1=c1,
+            c2=c2,
+            c3=c3,
+            d=d,
+            normalise=normalise,
         )
-        for num, rewirer in enumerate(rewirers):
-            if len(graphs_val[num]) < val_size and conditions:
-                g = SalientDists(
-                    id=i,
-                    data=all_graphs_val[i],
-                    c1=c1,
-                    c2=c2,
-                    c3=c3,
-                    d=d,
-                    seed=seed,
-                    rewirer=rewirer,
-                )
 
-                graphs_val[num].append(g.to_torch_data().to(device))
-                num_nodes_val.append(g.num_nodes)
-                pbar.update(1)
+        graphs_val.append(g)
+        pbar.update(1)
 
-            else:
-                break
+    assert (
+        len(graphs_val) == val_size
+    ), f"len(graphs_val) = {len(graphs_val)}, val_size = {val_size}"
 
-    for num in range(len(rewirers)):
-        assert (
-            len(graphs_val[num]) == val_size
-        ), f"len(graphs_val[{num}]) = {len(graphs_val[num])}, val_size = {val_size}"
 
     return graphs_train, graphs_val
 
@@ -153,7 +165,6 @@ def get_data_ColourInteract(
     max_train_nodes,
     min_val_nodes,
     max_val_nodes,
-    device,
     verbose=False,
 ):
     print("Loading data...")
