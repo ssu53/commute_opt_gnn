@@ -25,6 +25,7 @@ model:
   num_layers: 5
   drop_prob: 0.0
   global_pool_aggr: global_add_pool
+  norm: bn
   approaches: ["only_original", "interleave"]
   seeds: [17, 47, 23]
   

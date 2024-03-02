@@ -187,6 +187,7 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
         drop_prob=config.model.drop_prob,
         only_original_graph=True,
         global_pool_aggr=config.model.global_pool_aggr,
+        norm=config.model.norm,
     )
     model.to(device)
 
@@ -225,6 +226,7 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
             drop_prob=config.model.drop_prob,
             interleave_diff_graph=True,
             global_pool_aggr=config.model.global_pool_aggr,
+            norm=config.model.norm
         )
         model.to(device)
 
@@ -316,9 +318,9 @@ def run_experiment(config, graphs_train, graphs_val):
                     project=config.wandb.project,
                     entity=config.wandb.entity,
                     config=config,
-                    group=f"{config.model.approach}-{rewirer}-c1-{config.data.c1}-c2-{config.data.c2}-c3-{config.data.c3}",
+                    group=f"{config.wandb.experiment_name}-{config.model.approach}-{rewirer}-c1-{config.data.c1}-c2-{config.data.c2}-c3-{config.data.c3}",
                 )
-                wandb.run.name = f"{config.model.approach}-{rewirer}-c1-{config.data.c1}-c2-{config.data.c2}-c3-{config.data.c3}-seed-{config.model.seed}"
+                wandb.run.name = f"{config.wandb.experiment_name}-{config.model.approach}-{rewirer}-c1-{config.data.c1}-c2-{config.data.c2}-c3-{config.data.c3}-seed-{config.model.seed}"
             
             if config.data.name == "ColourInteract":
                 wandb.init(
@@ -342,6 +344,7 @@ def run_experiment(config, graphs_train, graphs_val):
                 only_original_graph=(config.model.approach == "only_original"),
                 interleave_diff_graph=(config.model.approach == "interleave"),
                 only_diff_graph=(config.model.approach == "only_diff"),
+                norm=config.model.norm,
             ).to(device)
 
             final_val_loss = train_eval_loop(
@@ -382,7 +385,6 @@ def main():
         if config.data.name == "SalientDists":
             graphs_train, graphs_val = get_data_SalientDists(
                 dataset=config.data.dataset,
-                device=device,
                 c1=config.data.c1,
                 c2=config.data.c2,
                 c3=config.data.c3,
@@ -399,7 +401,6 @@ def main():
         elif config.data.name == "ColourInteract":
             graphs_train, graphs_val = get_data_ColourInteract(
                 dataset=config.data.dataset,
-                device=device,
                 c1=config.data.c1,
                 c2=config.data.c2,
                 normalise=config.data.normalise,

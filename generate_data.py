@@ -11,6 +11,82 @@ from tqdm import tqdm
 from data import ColourInteract, SalientDists
 
 
+
+def load_base_graphs(dataset: str):
+    """
+    loads train and val graphs from torch_geometric.datasets
+    Args
+        dataset: 'ZINC' or 'LRGB'
+    """
+
+    print("Loading data...")
+
+    if dataset == "ZINC":
+        all_graphs_train = ZINC(
+            root="data/data_zinc",
+            subset=False,
+            split="train",
+        )
+
+        all_graphs_val = ZINC(
+            root="data/data_zinc",
+            subset=False,
+            split="val",
+        )
+    
+    elif dataset == "LRGB":
+        all_graphs_train = LRGBDataset(
+            root="data/data_lrgb",
+            name="Peptides-struct",
+            split="train",
+        )
+
+        all_graphs_val = LRGBDataset(
+            root="data/data_lrgb",
+            name="Peptides-struct",
+            split="val",
+        )
+    
+    else:
+        raise NotImplementedError(f"Dataset {dataset} not implemented")
+    
+    return all_graphs_train, all_graphs_val
+
+
+
+def filter_graph_size(all_graphs, num_graphs: int, min_nodes: int, max_nodes: int):
+
+
+    num_bins = (max_nodes - min_nodes) // 5
+
+    graphs_bins = {i: [] for i in range(min_nodes//5, (min_nodes//5)+num_bins)}
+    print(graphs_bins)
+
+
+    for graph in all_graphs:
+        if graph.num_nodes // 5 in graphs_bins:
+            nx_graph = to_networkx(graph, to_undirected=True)
+            if nx.is_connected(nx_graph):
+                graphs_bins[graph.num_nodes // 5].append(graph)
+
+
+    all_graphs = []
+    for _, graphs in graphs_bins.items():
+        try:
+            all_graphs.extend(random.sample(graphs, num_graphs//num_bins))
+        except:
+            raise Exception(f"len(graphs) of size {_} = {len(graphs)}, num_graphs//num_bins = {num_graphs//num_bins}")
+
+
+    print(f"Number of graphs: {len(all_graphs)}")
+    print(f"Graph sizes: {Counter([graph.num_nodes for graph in all_graphs])}")
+    assert len(all_graphs) == num_graphs, f"{len(all_graphs)=} {num_graphs=}"
+    
+
+    return all_graphs
+
+
+
 def get_data_SalientDists(
     dataset: str,
     train_size,
@@ -26,57 +102,15 @@ def get_data_SalientDists(
     max_val_nodes,
     verbose=False,
 ):
-    print("Loading data...")
-    if dataset == "ZINC":
-        all_graphs_train = ZINC(
-            root="data/data_zinc",
-            subset=False,
-            split="train",
-        )
 
-        all_graphs_val = ZINC(
-            root="data/data_zinc",
-            subset=False,
-            split="val",
-        )
-    elif dataset == "LRGB":
-        all_graphs_train = LRGBDataset(
-            root="data/data_lrgb",
-            name="Peptides-struct",
-            split="train",
-        )
 
-        all_graphs_val = LRGBDataset(
-            root="data/data_lrgb",
-            name="Peptides-struct",
-            split="val",
-        )
-    else:
-        raise NotImplementedError(f"Dataset {dataset} not implemented")
+    all_graphs_train, all_graphs_val = load_base_graphs(dataset)
 
+    
+    print("Filtering for train graphs...")
+    all_graphs_train = filter_graph_size(all_graphs_train, num_graphs=train_size, min_nodes=min_train_nodes, max_nodes=max_train_nodes)
 
     graphs_train = []
-    graphs_val = []
-
-    num_bins = (max_train_nodes-min_train_nodes)//5
-
-    graphs_train_bins = {i: [] for i in range(min_train_nodes//5, (min_train_nodes//5)+num_bins)}
-    print(graphs_train_bins)
-
-    for graph in all_graphs_train:
-        if graph.num_nodes // 5 in graphs_train_bins:
-            nx_graph = to_networkx(graph, to_undirected=True)
-            if nx.is_connected(nx_graph):
-                graphs_train_bins[graph.num_nodes // 5].append(graph)
-
-    all_graphs_train = []
-    for _, graphs in graphs_train_bins.items():
-        all_graphs_train.extend(random.sample(graphs, train_size//num_bins))
-
-    print(f"Number of training graphs: {len(all_graphs_train)}")
-    print(f"Train graph sizes: {Counter([graph.num_nodes for graph in all_graphs_train])}")
-    assert len(all_graphs_train) == train_size, f"len(all_graphs_train) = {len(all_graphs_train)}, train_size = {train_size}"
-
 
     pbar = tqdm(
         total=train_size,
@@ -103,28 +137,10 @@ def get_data_SalientDists(
 
 
 
-    num_bins = (max_val_nodes - min_val_nodes)//5
-    graphs_val_bins = {i: [] for i in range(min_val_nodes//5, (min_val_nodes//5)+num_bins)}
-    print(graphs_val_bins)
+    print("Filtering for val graphs...")
+    all_graphs_val = filter_graph_size(all_graphs_val, num_graphs=val_size, min_nodes=min_val_nodes, max_nodes=max_val_nodes)
 
-    for graph in all_graphs_val:
-        if graph.num_nodes // 5 in graphs_val_bins:
-            nx_graph = to_networkx(graph, to_undirected=True)
-            if nx.is_connected(nx_graph):
-                graphs_val_bins[graph.num_nodes // 5].append(graph)
-
-    all_graphs_val = []
-    for _, graphs in graphs_val_bins.items():
-        try:
-            all_graphs_val.extend(random.sample(graphs, val_size//num_bins))
-        except:
-            raise Exception(f"len(graphs) of size {_} = {len(graphs)}, val_size//num_bins = {val_size//num_bins}")
-
-
-    print(f"Number of validation graphs: {len(all_graphs_train)}")
-    print(f"Val graph sizes: {Counter([graph.num_nodes for graph in all_graphs_val])}")
-    assert len(all_graphs_val) == val_size, f"len(all_graphs_val) = {len(all_graphs_val)}, val_size = {val_size}"
-
+    graphs_val = []
 
     pbar = tqdm(
         total=val_size,
@@ -153,6 +169,7 @@ def get_data_SalientDists(
     return graphs_train, graphs_val
 
 
+
 def get_data_ColourInteract(
     dataset,
     train_size,
@@ -167,53 +184,15 @@ def get_data_ColourInteract(
     max_val_nodes,
     verbose=False,
 ):
-    print("Loading data...")
-    if dataset == "ZINC":
-        all_graphs_train = ZINC(
-            root="data/data_zinc",
-            subset=False,
-            split="train",
-        )
+    
+    
+    all_graphs_train, all_graphs_val = load_base_graphs(dataset)
 
-        all_graphs_val = ZINC(
-            root="data/data_zinc",
-            subset=False,
-            split="val",
-        )
-    elif dataset == "LRGB":
-        all_graphs_train = LRGBDataset(
-            root="data/data_lrgb",
-            name="Peptides-struct",
-            split="train",
-        )
 
-        all_graphs_val = LRGBDataset(
-            root="data/data_lrgb",
-            name="Peptides-struct",
-            split="val",
-        )
+    print("Filtering for train graphs...")
+    all_graphs_train = filter_graph_size(all_graphs_train, num_graphs=train_size, min_nodes=min_train_nodes, max_nodes=max_train_nodes)
 
     graphs_train = []
-    graphs_val = []
-
-    num_bins = (max_train_nodes-min_train_nodes)//5
-
-    graphs_train_bins = {i: [] for i in range(min_train_nodes//5, (min_train_nodes//5)+num_bins)}
-
-    for graph in all_graphs_train:
-        if graph.num_nodes // 5 in graphs_train_bins:
-            nx_graph = to_networkx(graph, to_undirected=True)
-            if nx.is_connected(nx_graph):
-                graphs_train_bins[graph.num_nodes // 5].append(graph)
-
-    all_graphs_train = []
-    for _, graphs in graphs_train_bins.items():
-        all_graphs_train.extend(random.sample(graphs, train_size//num_bins))
-
-    print(f"Number of training graphs: {len(all_graphs_train)}")
-    print(f"Train graph sizes: {Counter([graph.num_nodes for graph in all_graphs_train])}")
-    assert len(all_graphs_train) == train_size, f"len(all_graphs_train) = {len(all_graphs_train)}, train_size = {train_size}"
-
 
     pbar = tqdm(
         total=train_size,
@@ -238,28 +217,11 @@ def get_data_ColourInteract(
     ), f"len(graphs_train) = {len(graphs_train)}, train_size = {train_size}"
 
 
-    num_bins = (max_val_nodes - min_val_nodes)//5
-    graphs_val_bins = {i: [] for i in range(min_val_nodes//5, (min_val_nodes//5)+num_bins)}
-    print(graphs_val_bins)
 
-    for graph in all_graphs_val:
-        if graph.num_nodes // 5 in graphs_val_bins:
-            nx_graph = to_networkx(graph, to_undirected=True)
-            if nx.is_connected(nx_graph):
-                graphs_val_bins[graph.num_nodes // 5].append(graph)
+    print("Filtering for val graphs...")
+    all_graphs_val = filter_graph_size(all_graphs_val, num_graphs=val_size, min_nodes=min_val_nodes, max_nodes=max_val_nodes)
 
-    all_graphs_val = []
-    for _, graphs in graphs_val_bins.items():
-        try:
-            all_graphs_val.extend(random.sample(graphs, val_size//num_bins))
-        except:
-            raise Exception(f"len(graphs) of size {_} = {len(graphs)}, val_size//num_bins = {val_size//num_bins}")
-
-
-    print(f"Number of validation graphs: {len(all_graphs_train)}")
-    print(f"Val graph sizes: {Counter([graph.num_nodes for graph in all_graphs_val])}")
-    assert len(all_graphs_val) == val_size, f"len(all_graphs_val) = {len(all_graphs_val)}, val_size = {val_size}"
-
+    graphs_val = []
 
     pbar = tqdm(
         total=val_size,
@@ -282,6 +244,7 @@ def get_data_ColourInteract(
     assert (
         len(graphs_val) == val_size
     ), f"len(graphs_val) = {len(graphs_val)}, val_size = {val_size}"
+
 
     return graphs_train, graphs_val
 
