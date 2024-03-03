@@ -102,25 +102,17 @@ def train_eval_loop(
 
 def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    seed = 93
 
     with open(f"configs/{config_file}", "r") as f:
         config = EasyDict(yaml.safe_load(f))
 
-    print(
-        "CONFIGS\n",
-        f"{config_file=}\n",
-        f"{rewirers=}\n",
-        f"{device=}\n",
-        f"{seed=}\n",
-        config,
-    )
+    pprint(config)
 
     # Get data
+    set_seed(config.data.seed)
 
-    if config_file.startswith("debug_SalientDists"):
+    if config.data.name == "SalientDists":
         graphs_train, graphs_val = get_data_SalientDists(
-            rewirers=rewirers,
             dataset=config.data.dataset,
             device=device,
             c1=config.data.c1,
@@ -133,13 +125,10 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
             max_val_nodes=config.data.max_val_nodes,
             train_size=config.data.train_size,
             val_size=config.data.val_size,
-            seed=seed,
             verbose=config.run.silent,
         )
-
-    elif config_file.startswith("debug_ColourInteract"):
+    elif config.data.name == "ColourInteract":
         graphs_train, graphs_val = get_data_ColourInteract(
-            rewirers=rewirers,
             dataset=config.data.dataset,
             device=device,
             c1=config.data.c1,
@@ -152,10 +141,8 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
             max_val_nodes=config.data.max_val_nodes,
             train_size=config.data.train_size,
             val_size=config.data.val_size,
-            seed=seed,
             verbose=config.run.silent,
         )
-
     else:
         raise NotImplementedError
 
@@ -166,8 +153,23 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
         f"val targets: {np.mean([g.y.cpu() for g in graphs_val]):.2f} +/- {np.std([g.y.cpu() for g in graphs_val]):.3f}"
     )
 
-    dl_train = DataLoader(graphs_train, batch_size=config.train.train_batch_size)
-    dl_val = DataLoader(graphs_val, batch_size=config.train.val_batch_size)
+    graphs_train_rewirer = []
+    for g in graphs_train:
+        g.attach_rewirer(config.data.rewirer)
+        graphs_train_rewirer.append(g.to_torch_data().to(device))
+
+    graphs_val_rewirer = []
+    for g in graphs_val:
+        g.attach_rewirer(config.data.rewirer)
+        graphs_val_rewirer.append(g.to_torch_data().to(device))
+
+    for seed in config.model.seeds:
+        config.model.seed = seed
+
+    set_seed(config.model.seed)
+
+    dl_train = DataLoader(graphs_train_rewirer, batch_size=config.train.train_batch_size)
+    dl_val = DataLoader(graphs_val_rewirer, batch_size=config.train.val_batch_size)
 
     print(len(graphs_train))
     in_channels = graphs_train[0].x.shape[1]
@@ -175,8 +177,17 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
         1 if len(graphs_train[0].y.shape) == 0 else len(graphs_train[0].y.shape)
     )
 
-    print("-------------------")
-    print("Training a GIN model without rewiring...")
+    dl_train = DataLoader(
+        graphs_train, batch_size=config.train.train_batch_size
+    )
+    dl_val = DataLoader(graphs_val, batch_size=config.train.val_batch_size)
+
+    in_channels = graphs_train[0].x.shape[1]
+    out_channels = (
+        1
+        if len(graphs_train[0].y.shape) == 0
+        else len(graphs_train[0].y.shape)
+    )
 
     model = GINModel(
         in_channels=in_channels,
@@ -184,12 +195,12 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
         num_layers=config.model.num_layers,
         out_channels=out_channels,
         drop_prob=config.model.drop_prob,
-        only_original_graph=True,
+        interleave_diff_graph=True,
         global_pool_aggr=config.model.global_pool_aggr,
     )
     model.to(device)
 
-    train_eval_loop(
+    end_results = train_eval_loop(
         model,
         dl_train,
         dl_val,
@@ -199,44 +210,6 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
         verbose=not config.run.silent,
         log_wandb=False,
     )
-
-    for num, rewirer in enumerate(rewirers):
-        print("-------------------")
-        print(f"Training a GIN model + interleaved {rewirer}...")
-
-        dl_train = DataLoader(
-            graphs_train[num], batch_size=config.train.train_batch_size
-        )
-        dl_val = DataLoader(graphs_val[num], batch_size=config.train.val_batch_size)
-
-        in_channels = graphs_train[num][0].x.shape[1]
-        out_channels = (
-            1
-            if len(graphs_train[num][0].y.shape) == 0
-            else len(graphs_train[num][0].y.shape)
-        )
-
-        model = GINModel(
-            in_channels=in_channels,
-            hidden_channels=config.model.hidden_channels,
-            num_layers=config.model.num_layers,
-            out_channels=out_channels,
-            drop_prob=config.model.drop_prob,
-            interleave_diff_graph=True,
-            global_pool_aggr=config.model.global_pool_aggr,
-        )
-        model.to(device)
-
-        end_results = train_eval_loop(
-            model,
-            dl_train,
-            dl_val,
-            lr=config.train.lr,
-            num_epochs=config.train.num_epochs,
-            print_every=config.train.print_every,
-            verbose=not config.run.silent,
-            log_wandb=False,
-        )
 
 
 def set_seed(seed):

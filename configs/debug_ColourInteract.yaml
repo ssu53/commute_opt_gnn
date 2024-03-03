@@ -9,13 +9,13 @@ data:
   c1: 1.0
   c2: 50.0
   num_colours: 4
-  train_size: 1000
-  val_size: 100
+  train_size: 1500
+  val_size: 300
   min_train_nodes: 75
   max_train_nodes: 125
   min_val_nodes: 125
-  max_val_nodes: 150
-  rewirers: ["cayley_clusters", "cayley"]
+  max_val_nodes: 175
+  rewirers: "cayley_clusters"
   normalise: True
   seed: 91
 
@@ -25,7 +25,7 @@ model:
   drop_prob: 0.0
   global_pool_aggr: global_mean_pool
   approach: "interleave"
-  seeds: [73, 47, 23]
+  seeds: 73
   
 
 train:
