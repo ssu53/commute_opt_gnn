@@ -119,6 +119,7 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
             c2=config.data.c2,
             c3=config.data.c3,
             d=config.data.d,
+            normalise=config.data.normalise,
             min_train_nodes=config.data.min_train_nodes,
             max_train_nodes=config.data.max_train_nodes,
             min_val_nodes=config.data.min_val_nodes,
@@ -197,6 +198,7 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
         drop_prob=config.model.drop_prob,
         interleave_diff_graph=True,
         global_pool_aggr=config.model.global_pool_aggr,
+        norm=config.model.norm,
     )
     model.to(device)
 
@@ -210,6 +212,45 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
         verbose=not config.run.silent,
         log_wandb=False,
     )
+
+    for num, rewirer in enumerate(rewirers):
+        print("-------------------")
+        print(f"Training a GIN model + interleaved {rewirer}...")
+
+        dl_train = DataLoader(
+            graphs_train[num], batch_size=config.train.train_batch_size
+        )
+        dl_val = DataLoader(graphs_val[num], batch_size=config.train.val_batch_size)
+
+        in_channels = graphs_train[num][0].x.shape[1]
+        out_channels = (
+            1
+            if len(graphs_train[num][0].y.shape) == 0
+            else len(graphs_train[num][0].y.shape)
+        )
+
+        model = GINModel(
+            in_channels=in_channels,
+            hidden_channels=config.model.hidden_channels,
+            num_layers=config.model.num_layers,
+            out_channels=out_channels,
+            drop_prob=config.model.drop_prob,
+            interleave_diff_graph=True,
+            global_pool_aggr=config.model.global_pool_aggr,
+            norm=config.model.norm
+        )
+        model.to(device)
+
+        end_results = train_eval_loop(
+            model,
+            dl_train,
+            dl_val,
+            lr=config.train.lr,
+            num_epochs=config.train.num_epochs,
+            print_every=config.train.print_every,
+            verbose=not config.run.silent,
+            log_wandb=False,
+        )
 
 
 def set_seed(seed):
@@ -242,7 +283,6 @@ def run_experiment(config, graphs_train, graphs_val):
 
     train_mean = np.mean([g.y.cpu() for g in graphs_train])
     train_std = np.std([g.y.cpu() for g in graphs_train])
-
     print(f"train targets: {train_mean:.2f} +/- {train_std:.3f}")
 
     val_mean = np.mean([g.y.cpu() for g in graphs_val])
@@ -283,13 +323,26 @@ def run_experiment(config, graphs_train, graphs_val):
                 graphs_val_rewirer, batch_size=config.train.val_batch_size
             )
 
-            wandb.init(
-                project=config.wandb.project,
-                entity=config.wandb.entity,
-                config=config,
-                group=f"{config.data.dataset}-{config.model.approach}-rewired-with-{rewirer}-c2-{config.data.c2}",
-            )
-            wandb.run.name = f"{config.data.dataset}-{config.model.approach}-rewired-with-{rewirer}-c2-{config.data.c2}-seed-{config.model.seed}"
+            
+            if config.data.name == "SalientDists":
+                wandb.init(
+                    project=config.wandb.project,
+                    entity=config.wandb.entity,
+                    config=config,
+                    group=f"{config.wandb.experiment_name}-{config.model.approach}-{rewirer}-c1-{config.data.c1}-c2-{config.data.c2}-c3-{config.data.c3}",
+                )
+                wandb.run.name = f"{config.wandb.experiment_name}-{config.model.approach}-{rewirer}-c1-{config.data.c1}-c2-{config.data.c2}-c3-{config.data.c3}-seed-{config.model.seed}"
+            
+            if config.data.name == "ColourInteract":
+                wandb.init(
+                    project=config.wandb.project,
+                    entity=config.wandb.entity,
+                    config=config,
+                    group=f"{config.data.dataset}-{config.model.approach}-rewired-with-{rewirer}-c2-{config.data.c2}",
+                )
+                wandb.run.name = f"{config.data.dataset}-{config.model.approach}-rewired-with-{rewirer}-c2-{config.data.c2}-seed-{config.model.seed}"
+            
+            
             wandb.log({"train/target_mean": train_mean, "train/target_std": train_std})
             wandb.log({"eval/target_mean": val_mean, "eval/target_std": val_std})
 
@@ -302,6 +355,7 @@ def run_experiment(config, graphs_train, graphs_val):
                 only_original_graph=(config.model.approach == "only_original"),
                 interleave_diff_graph=(config.model.approach == "interleave"),
                 only_diff_graph=(config.model.approach == "only_diff"),
+                norm=config.model.norm,
             ).to(device)
 
             final_val_loss = train_eval_loop(
@@ -334,6 +388,7 @@ def main():
 
     with open(f"configs/{args.config_fn}", "r") as f:
         config = EasyDict(yaml.safe_load(f))
+    print(config)
 
     for c2 in config.data.c2s:
         set_seed(config.data.seed)
@@ -341,11 +396,11 @@ def main():
         if config.data.name == "SalientDists":
             graphs_train, graphs_val = get_data_SalientDists(
                 dataset=config.data.dataset,
-                device=device,
                 c1=config.data.c1,
                 c2=config.data.c2,
                 c3=config.data.c3,
                 d=config.data.d,
+                normalise=config.data.normalise,
                 min_train_nodes=config.data.min_train_nodes,
                 max_train_nodes=config.data.max_train_nodes,
                 min_val_nodes=config.data.min_val_nodes,
@@ -357,7 +412,6 @@ def main():
         elif config.data.name == "ColourInteract":
             graphs_train, graphs_val = get_data_ColourInteract(
                 dataset=config.data.dataset,
-                device=device,
                 c1=config.data.c1,
                 c2=config.data.c2,
                 normalise=config.data.normalise,

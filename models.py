@@ -4,18 +4,23 @@ from torch_geometric.nn import MessagePassing, global_add_pool, global_mean_pool
 
 
 class MyGINConv(MessagePassing):
-    def __init__(self, dim_emb):
+    def __init__(self, dim_emb, norm):
         """
         GINConv with built-in MLP (linear -> batch norm -> relu -> linear)
         Args
             dim_emb: embedding dimension
+            norm: normlisation layer, either 'bn' (batch norm) or 'ln' (layer norm)
         """
 
         super().__init__(aggr="add")
+        
+        if norm == 'bn': norm_layer = torch.nn.BatchNorm1d(2 * dim_emb)
+        elif norm == 'ln': norm_layer = torch.nn.LayerNorm(2 * dim_emb)
+        else: raise NotImplementedError
 
         self.mlp = torch.nn.Sequential(
             torch.nn.Linear(dim_emb, 2 * dim_emb),
-            torch.nn.BatchNorm1d(2 * dim_emb),
+            norm_layer,
             torch.nn.ReLU(),
             torch.nn.Linear(2 * dim_emb, dim_emb),
         )
@@ -44,6 +49,7 @@ class GINModel(nn.Module):
         only_original_graph: bool = False,
         only_diff_graph: bool = False,
         global_pool_aggr: str = "global_add_pool",
+        norm: str = 'bn',
     ):
         """
         Args
@@ -83,7 +89,7 @@ class GINModel(nn.Module):
         self.convs = torch.nn.ModuleList()
 
         for _ in range(num_layers):
-            self.convs.append(MyGINConv(hidden_channels))
+            self.convs.append(MyGINConv(hidden_channels, norm))
 
         self.drop = nn.Dropout(p=drop_prob)
 
