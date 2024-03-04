@@ -1,7 +1,7 @@
 #!/bin/bash
 #BATCH -J EXP
 #SBATCH -A COMPUTERLAB-SL2-CPU
-#SBATCH --time=06:00:00
+#SBATCH --time=02:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=3
@@ -27,5 +27,5 @@ echo -e "JobID: $JOBID\n======" > $LOG
 echo "Time: `date`" >> $LOG
 echo "Running on master node: `hostname`" >> $LOG
 
-python train.py --config_fn ColourInteract.yaml >> $LOG 2> $ERR
+python train.py --config_fn "ColourInteract-not-OOD.yaml" --c2_over_c1 0.01 >> $LOG 2> $ERR
 echo "Time: `date`" >> $LOG

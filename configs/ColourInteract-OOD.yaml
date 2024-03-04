@@ -1,0 +1,40 @@
+wandb:
+  experiment_name: ''
+  project: 'ColourInteract Sweeps Monday OOD sin'
+  entity: 'commute_opt_gnn'
+
+data:
+  name: ColourInteract
+  dataset : 'LRGB'
+  num_colours: 6
+  train_size: 750
+  val_size: 100
+  min_train_nodes: 75
+  max_train_nodes: 100
+  min_val_nodes: 100
+  max_val_nodes: 125
+  rewirers: ["cayley_clusters", "cayley"]
+  normalise: True
+  seed: 91
+
+model:
+  hidden_channels: 10
+  num_layers: 5
+  drop_prob: 0.5
+  global_pool_aggr: global_mean_pool
+  approaches: ["interleave", "only_original", "only_diff"]
+  seeds: [17, 71, 117, 61, 13]
+  norm: ln
+  
+train:
+  lr: 0.01
+  warmup: 50
+  gamma_decay: 0.95
+  num_epochs: 200
+  print_every: 10
+  train_batch_size: 128
+  val_batch_size: 128
+  loss_fn: "MSE"
+
+run:
+  silent: False

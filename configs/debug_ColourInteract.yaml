@@ -6,8 +6,7 @@ wandb:
 data:
   name: ColourInteract
   dataset : 'LRGB'
-  c1: 1.0
-  c2: 50.0
+  c2_over_c1: 50
   num_colours: 4
   train_size: 1500
   val_size: 300
@@ -15,25 +14,26 @@ data:
   max_train_nodes: 125
   min_val_nodes: 125
   max_val_nodes: 175
-  rewirers: "cayley_clusters"
+  rewirers: ["cayley", "cayley_clusters"]
   normalise: True
   seed: 91
 
 model:
   hidden_channels: 8
   num_layers: 5
-  drop_prob: 0.0
-  global_pool_aggr: global_mean_pool
+  drop_prob: 0.5
+  global_pool_aggr: global_add_pool
   approach: "interleave"
-  seeds: 73
-  
+  seed: 73
+  norm: ln
 
 train:
   lr: 0.0001
   num_epochs: 200
-  print_every: 1
+  print_every: 10
   train_batch_size: 32
   val_batch_size: 32
+  loss_fn: "MSE"
 
 run:
   silent: False

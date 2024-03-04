@@ -102,6 +102,7 @@ class ColourInteract(MyGraph):
         c1,
         c2,
         num_colours,
+        mean_num_nodes,
         normalise,
         distances=None,
         x=None,
@@ -113,6 +114,7 @@ class ColourInteract(MyGraph):
         self.c1 = c1
         self.c2 = c2
         self.num_colours = num_colours
+        self.mean_num_nodes = mean_num_nodes
 
         self.values = None
         self.colours = colours
@@ -180,25 +182,34 @@ class ColourInteract(MyGraph):
                     dist_matrix[i, j] = self.distances[i][j]
 
             dist_matrix = torch.tensor(dist_matrix)
-            mask_1 = (dist_matrix == 1)
+            mask_1 = dist_matrix == 1
 
             interactions = torch.exp(self.values + self.values.T)
             interactions.fill_diagonal_(0)
             interactions = torch.triu(interactions)
 
-            y = torch.sum(self.c1 * interactions[mask_1])
+            y = torch.sum(self.c1 * interactions[mask_1]) 
 
             for color in range(self.num_colours):
-                color_mask = (self.colours == color)
+                color_mask = self.colours == color
 
                 same_color_matrix = color_mask.unsqueeze(1) & color_mask.unsqueeze(0)
+                same_color_matrix.fill_diagonal_(0)
+                same_color_matrix = torch.triu(same_color_matrix)
 
-                y += torch.sum(self.c2 * interactions[same_color_matrix])
+                y += torch.sum(self.c2 * interactions[same_color_matrix]) 
 
             if self.normalise:
-                y = y / self.num_nodes
+                y = y / (self.num_nodes)
+                # y = y / (100 ** 2)
+            
+            # print(y)
+            # y = y / self.mean_num_nodes
             y = torch.tensor([y], dtype=torch.float)
-
+            # y = y / (self.c2 / self.c1)
+            # y = (1+torch.sin(y))/2
+            # y = torch.tanh(y)
+            
         self.data.y = y
 
     def _set_edge_attr(self):
@@ -216,6 +227,8 @@ class ColourInteract(MyGraph):
             self.attach_fully_connected()
         elif rewirer == "cayley_clusters":
             self.attach_cayley_clusters()
+        elif rewirer == "unconnected_cayley_clusters":
+            self.attach_cayley_clusters(connect_clusters=False)
         else:
             raise NotImplementedError
 
@@ -231,7 +244,7 @@ class ColourInteract(MyGraph):
             id=self.id,
         )
 
-    def attach_cayley_clusters(self):
+    def attach_cayley_clusters(self, connect_clusters=True):
         node_idx = 0
         graph = nx.Graph()
 
@@ -248,7 +261,7 @@ class ColourInteract(MyGraph):
                     dict(zip(cg_gen.G_trimmed, range(node_idx, node_idx + num_nodes))),
                 )
 
-                if node_idx > 0:
+                if node_idx > 0 and connect_clusters:
                     one_colour_cayley.add_edge(
                         random.randint(node_idx, node_idx + num_nodes - 1),
                         random.randint(0, node_idx - 1),
@@ -340,8 +353,8 @@ class SalientDists(MyGraph):
 
             sum_x = self.data.x + self.data.x.T
 
-            mask_1 = (dist_matrix == 1)
-            mask_d = (dist_matrix == self.d)
+            mask_1 = dist_matrix == 1
+            mask_d = dist_matrix == self.d
             mask_other = (
                 (dist_matrix != 1) & (dist_matrix != self.d) & (dist_matrix != 0)
             )

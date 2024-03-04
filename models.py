@@ -13,10 +13,13 @@ class MyGINConv(MessagePassing):
         """
 
         super().__init__(aggr="add")
-        
-        if norm == 'bn': norm_layer = torch.nn.BatchNorm1d(2 * dim_emb)
-        elif norm == 'ln': norm_layer = torch.nn.LayerNorm(2 * dim_emb)
-        else: raise NotImplementedError
+
+        if norm == "bn":
+            norm_layer = torch.nn.BatchNorm1d(2 * dim_emb)
+        elif norm == "ln":
+            norm_layer = torch.nn.LayerNorm(2 * dim_emb)
+        else:
+            raise NotImplementedError
 
         self.mlp = torch.nn.Sequential(
             torch.nn.Linear(dim_emb, 2 * dim_emb),
@@ -49,7 +52,7 @@ class GINModel(nn.Module):
         only_original_graph: bool = False,
         only_diff_graph: bool = False,
         global_pool_aggr: str = "global_add_pool",
-        norm: str = 'bn',
+        norm: str = "bn",
     ):
         """
         Args
@@ -84,7 +87,6 @@ class GINModel(nn.Module):
             self.pool = global_mean_pool
         else:
             raise NotImplementedError
-        self.lin_out = nn.Linear(hidden_channels, out_channels)
 
         self.convs = torch.nn.ModuleList()
 
@@ -92,6 +94,13 @@ class GINModel(nn.Module):
             self.convs.append(MyGINConv(hidden_channels, norm))
 
         self.drop = nn.Dropout(p=drop_prob)
+
+        # self.lin_out = nn.Linear(hidden_channels, out_channels)
+        self.lin_out = torch.nn.Sequential(
+            torch.nn.Linear(hidden_channels, 2 * hidden_channels),
+            torch.nn.ReLU(),
+            torch.nn.Linear(2 * hidden_channels, out_channels),
+        )
 
     def forward(self, data):
         x = data.x

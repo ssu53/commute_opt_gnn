@@ -11,7 +11,6 @@ from tqdm import tqdm
 from data import ColourInteract, SalientDists
 
 
-
 def load_base_graphs(dataset: str):
     """
     loads train and val graphs from torch_geometric.datasets
@@ -60,8 +59,6 @@ def filter_graph_size(all_graphs, num_graphs: int, min_nodes: int, max_nodes: in
     num_bins = (max_nodes - min_nodes) // 5
 
     graphs_bins = {i: [] for i in range(min_nodes//5, (min_nodes//5)+num_bins)}
-    print(graphs_bins)
-
 
     for graph in all_graphs:
         if graph.num_nodes // 5 in graphs_bins:
@@ -72,6 +69,7 @@ def filter_graph_size(all_graphs, num_graphs: int, min_nodes: int, max_nodes: in
 
     all_graphs = []
     for _, graphs in graphs_bins.items():
+        assert len(graphs) >= num_graphs//num_bins, f"len(graphs) = {len(graphs)}, num_graphs//num_bins = {num_graphs//num_bins}"
         try:
             all_graphs.extend(random.sample(graphs, num_graphs//num_bins))
         except:
@@ -207,6 +205,7 @@ def get_data_ColourInteract(
             c2=c2,
             num_colours=num_colours,
             normalise=normalise,
+            mean_num_nodes=(min_train_nodes + max_train_nodes) // 2
         )
 
         graphs_train.append(g)
@@ -215,7 +214,6 @@ def get_data_ColourInteract(
     assert (
         len(graphs_train) == train_size
     ), f"len(graphs_train) = {len(graphs_train)}, train_size = {train_size}"
-
 
 
     print("Filtering for val graphs...")
@@ -235,7 +233,8 @@ def get_data_ColourInteract(
             c1=c1,
             c2=c2,
             num_colours=num_colours,
-            normalise=normalise
+            normalise=normalise,
+            mean_num_nodes=(min_val_nodes + max_val_nodes) // 2
         )
 
         graphs_val.append(g)

@@ -8,6 +8,14 @@ import numpy as np
 import torch
 import yaml
 from easydict import EasyDict
+from prettytable import PrettyTable
+from torch.optim.lr_scheduler import (
+    ConstantLR,
+    CosineAnnealingWarmRestarts,
+    ExponentialLR,
+    LinearLR,
+    SequentialLR,
+)
 from torch_geometric.loader import DataLoader
 from tqdm import tqdm
 
@@ -45,35 +53,79 @@ def train_eval_loop(
     lr: float,
     num_epochs: int,
     print_every,
-    loss_fn=None,
+    loss_fn,
+    gamma_decay,
+    warmup,
+    train_std,
     verbose=False,
     log_wandb=True,
 ):
-    optimiser = torch.optim.Adam(model.parameters(), lr=lr)
+    optimiser = torch.optim.AdamW(model.parameters(), lr=lr)
 
-    if loss_fn is None:
+    # warmup_scheduler = ConstantLR(optimiser, factor=1, total_iters=warmup)
+    warmup_scheduler = LinearLR(optimiser, start_factor=1e-4, total_iters=warmup)
+    # decay_scheduler = LinearLR(optimiser, start_factor=1, end_factor=1e-4, total_iters=num_epochs - warmup)
+    decay_scheduler = ExponentialLR(optimiser, gamma=gamma_decay)
+
+    scheduler = SequentialLR(
+        optimiser, schedulers=[warmup_scheduler, decay_scheduler], milestones=[warmup]
+    )
+
+    # scheduler = CosineAnnealingWarmRestarts(optimiser, T_0=num_epochs//4, eta_min=0.0)
+
+    if loss_fn == "MSE":
         loss_fn = torch.nn.MSELoss(reduction="mean")
         if verbose:
             print("Using MSE Loss...")
+    elif loss_fn == "CEL":
+        loss_fn = torch.nn.CrossEntropyLoss(reduction="mean")
+        if verbose:
+            print("Using Cross Entropy Loss...")
 
     epoch2trainloss = {}
     epoch2valloss = {}
 
-    with tqdm(range(1, num_epochs + 1), unit="e", disable=not verbose) as tepoch:
+    with tqdm(range(num_epochs), unit="e", disable=not verbose) as tepoch:
         for epoch in tepoch:
+            running_train_loss = []
             tepoch.set_description(f"Epoch {epoch}")
-            for data_train in data_loader_train:
-                train_loss = train_model(data_train, model, optimiser, loss_fn)
+            iters = len(data_loader_train)
+            for i, data_train in enumerate(data_loader_train):
+                running_train_loss.append(
+                    train_model(data_train, model, optimiser, loss_fn)
+                )
+                # scheduler.step(epoch + i / iters)
+            scheduler.step()
+
+            
+            train_loss = np.mean(running_train_loss)
+
             if epoch % print_every == 0:
                 val_loss = eval_model(data_loader_val, model, loss_fn)
                 tepoch.set_postfix(train_loss=train_loss, val_loss=val_loss)
                 epoch2trainloss[epoch] = train_loss
                 epoch2valloss[epoch] = val_loss
                 if log_wandb:
-                    wandb.log({"train/loss": train_loss, "eval/loss": val_loss})
+                    wandb.log(
+                        {
+                            "train/loss": train_loss,
+                            "train/loss_over_variance": train_loss / (train_std ** 2),
+                            "eval/loss": val_loss,
+                            "train/learning_rate": scheduler.get_last_lr()[0],
+                        }
+                    )
             else:
                 if log_wandb:
-                    wandb.log({"train/loss": train_loss})
+                    wandb.log(
+                        {
+                            "train/loss": train_loss,
+                            "train/loss_over_variance": train_loss / (train_std ** 2),
+                            "train/learning_rate": scheduler.get_last_lr()[0],
+                        }
+                    )
+
+    epoch2valloss[num_epochs] = eval_model(data_loader_val, model, loss_fn)
+    wandb.log({"eval/loss": epoch2valloss[num_epochs]})
 
     print(
         f"Minimum val loss at epoch {min(epoch2valloss, key=epoch2valloss.get)}: {min(epoch2valloss.values())}"
@@ -85,14 +137,14 @@ def train_eval_loop(
         print("Train / Val loss by epoch")
         print(
             "\n".join(
-                "{!r}: {:.3f} / {:.3f}".format(
+                "{!r}: {:.7f} / {:.7f}".format(
                     epoch, epoch2trainloss[epoch], epoch2valloss[epoch]
                 )
                 for epoch in epoch2trainloss
             )
         )
 
-    end_results = {"end": val_loss, "best": min(epoch2valloss.values())}
+    end_results = {"end": val_loss, "best": min(epoch2valloss.values()), "train/loss_over_variance": train_loss / (train_std ** 2)}
 
     del optimiser
     del loss_fn
@@ -129,9 +181,15 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
             verbose=config.run.silent,
         )
     elif config.data.name == "ColourInteract":
+        config.data.c1 = 1 / (1 + config.data.c2_over_c1)
+        config.data.c2 = config.data.c2_over_c1 / (1 + config.data.c2_over_c1)
+
+        assert (
+            config.data.c1 + config.data.c2 == 1.0
+        ), f"{config.data.c1} + {config.data.c2} != 1.0"
+
         graphs_train, graphs_val = get_data_ColourInteract(
             dataset=config.data.dataset,
-            device=device,
             c1=config.data.c1,
             c2=config.data.c2,
             normalise=config.data.normalise,
@@ -147,47 +205,31 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
     else:
         raise NotImplementedError
 
+    train_mean = np.mean([g.y.cpu() for g in graphs_train])
+    train_std = np.std([g.y.cpu() for g in graphs_train])
     print(
-        f"train targets: {np.mean([g.y.cpu() for g in graphs_train]):.2f} +/- {np.std([g.y.cpu() for g in graphs_train]):.3f}"
+        f"train targets: {train_mean:.2f} +/- {train_std:.3f}"
     )
     print(
         f"val targets: {np.mean([g.y.cpu() for g in graphs_val]):.2f} +/- {np.std([g.y.cpu() for g in graphs_val]):.3f}"
     )
 
-    graphs_train_rewirer = []
-    for g in graphs_train:
-        g.attach_rewirer(config.data.rewirer)
-        graphs_train_rewirer.append(g.to_torch_data().to(device))
-
-    graphs_val_rewirer = []
-    for g in graphs_val:
-        g.attach_rewirer(config.data.rewirer)
-        graphs_val_rewirer.append(g.to_torch_data().to(device))
-
-    for seed in config.model.seeds:
-        config.model.seed = seed
-
     set_seed(config.model.seed)
 
-    dl_train = DataLoader(graphs_train_rewirer, batch_size=config.train.train_batch_size)
-    dl_val = DataLoader(graphs_val_rewirer, batch_size=config.train.val_batch_size)
+    graphs_train_base = []
+    for g in graphs_train:
+        graphs_train_base.append(g.to_torch_data().to(device))
 
-    print(len(graphs_train))
+    graphs_val_base = []
+    for g in graphs_val:
+        graphs_val_base.append(g.to_torch_data().to(device))
+
+    dl_train = DataLoader(graphs_train_base, batch_size=config.train.train_batch_size)
+    dl_val = DataLoader(graphs_val_base, batch_size=config.train.val_batch_size)
+
     in_channels = graphs_train[0].x.shape[1]
     out_channels = (
         1 if len(graphs_train[0].y.shape) == 0 else len(graphs_train[0].y.shape)
-    )
-
-    dl_train = DataLoader(
-        graphs_train, batch_size=config.train.train_batch_size
-    )
-    dl_val = DataLoader(graphs_val, batch_size=config.train.val_batch_size)
-
-    in_channels = graphs_train[0].x.shape[1]
-    out_channels = (
-        1
-        if len(graphs_train[0].y.shape) == 0
-        else len(graphs_train[0].y.shape)
     )
 
     model = GINModel(
@@ -196,7 +238,7 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
         num_layers=config.model.num_layers,
         out_channels=out_channels,
         drop_prob=config.model.drop_prob,
-        interleave_diff_graph=True,
+        only_original_graph=True,
         global_pool_aggr=config.model.global_pool_aggr,
         norm=config.model.norm,
     )
@@ -211,22 +253,35 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
         print_every=config.train.print_every,
         verbose=not config.run.silent,
         log_wandb=False,
+        loss_fn=config.train.loss_fn,
+        gamma_decay=config.train.gamma_decay,
+        warmup=config.train.warmup,
+        train_std=train_std,
     )
 
     for num, rewirer in enumerate(rewirers):
         print("-------------------")
         print(f"Training a GIN model + interleaved {rewirer}...")
+        graphs_train_rewirer = []
+        for g in graphs_train:
+            g.attach_rewirer(rewirer)
+            graphs_train_rewirer.append(g.to_torch_data().to(device))
+
+        graphs_val_rewirer = []
+        for g in graphs_val:
+            g.attach_rewirer(rewirer)
+            graphs_val_rewirer.append(g.to_torch_data().to(device))
 
         dl_train = DataLoader(
-            graphs_train[num], batch_size=config.train.train_batch_size
+            graphs_train_rewirer, batch_size=config.train.train_batch_size
         )
-        dl_val = DataLoader(graphs_val[num], batch_size=config.train.val_batch_size)
+        dl_val = DataLoader(graphs_val_rewirer, batch_size=config.train.val_batch_size)
 
-        in_channels = graphs_train[num][0].x.shape[1]
+        in_channels = graphs_train_rewirer[0].x.shape[1]
         out_channels = (
             1
-            if len(graphs_train[num][0].y.shape) == 0
-            else len(graphs_train[num][0].y.shape)
+            if len(graphs_train_rewirer[0].y.shape) == 0
+            else len(graphs_train_rewirer[0].y.shape)
         )
 
         model = GINModel(
@@ -237,7 +292,7 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
             drop_prob=config.model.drop_prob,
             interleave_diff_graph=True,
             global_pool_aggr=config.model.global_pool_aggr,
-            norm=config.model.norm
+            norm=config.model.norm,
         )
         model.to(device)
 
@@ -250,6 +305,10 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
             print_every=config.train.print_every,
             verbose=not config.run.silent,
             log_wandb=False,
+            loss_fn=config.train.loss_fn,
+            gamma_decay=config.train.gamma_decay,
+            warmup=config.train.warmup,
+            train_std=train_std,
         )
 
 
@@ -261,6 +320,19 @@ def set_seed(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+def count_parameters(model):
+    table = PrettyTable(["Modules", "Parameters"])
+    total_params = 0
+    for name, parameter in model.named_parameters():
+        if not parameter.requires_grad:
+            continue
+        params = parameter.numel()
+        table.add_row([name, params])
+        total_params += params
+    print(table)
+    print(f"Total Trainable Params: {total_params}")
+    return total_params
+    
 
 def run_experiment(config, graphs_train, graphs_val):
     print(config)
@@ -323,7 +395,6 @@ def run_experiment(config, graphs_train, graphs_val):
                 graphs_val_rewirer, batch_size=config.train.val_batch_size
             )
 
-            
             if config.data.name == "SalientDists":
                 wandb.init(
                     project=config.wandb.project,
@@ -332,17 +403,17 @@ def run_experiment(config, graphs_train, graphs_val):
                     group=f"{config.wandb.experiment_name}-{config.model.approach}-{rewirer}-c1-{config.data.c1}-c2-{config.data.c2}-c3-{config.data.c3}",
                 )
                 wandb.run.name = f"{config.wandb.experiment_name}-{config.model.approach}-{rewirer}-c1-{config.data.c1}-c2-{config.data.c2}-c3-{config.data.c3}-seed-{config.model.seed}"
-            
-            if config.data.name == "ColourInteract":
+            elif config.data.name == "ColourInteract":
                 wandb.init(
                     project=config.wandb.project,
                     entity=config.wandb.entity,
                     config=config,
-                    group=f"{config.data.dataset}-{config.model.approach}-rewired-with-{rewirer}-c2-{config.data.c2}",
+                    group=f"{config.data.dataset}-{config.model.approach}-rewired-with-{rewirer}-c2/c1-{config.data.c2 / config.data.c1}",
                 )
-                wandb.run.name = f"{config.data.dataset}-{config.model.approach}-rewired-with-{rewirer}-c2-{config.data.c2}-seed-{config.model.seed}"
-            
-            
+                wandb.run.name = f"{config.data.dataset}-{config.model.approach}-rewired-with-{rewirer}-c2/c1-{config.data.c2 / config.data.c1}-seed-{config.model.seed}"
+            else:
+                raise Exception
+
             wandb.log({"train/target_mean": train_mean, "train/target_std": train_std})
             wandb.log({"eval/target_mean": val_mean, "eval/target_std": val_std})
 
@@ -358,6 +429,10 @@ def run_experiment(config, graphs_train, graphs_val):
                 norm=config.model.norm,
             ).to(device)
 
+            print(model)
+            print(f"Total number parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+            # count_parameters(model)
+
             final_val_loss = train_eval_loop(
                 model,
                 dl_train,
@@ -367,6 +442,10 @@ def run_experiment(config, graphs_train, graphs_val):
                 print_every=config.train.print_every,
                 verbose=not config.run.silent,
                 log_wandb=True,
+                loss_fn=config.train.loss_fn,
+                gamma_decay=config.train.gamma_decay,
+                warmup=config.train.warmup,
+                train_std=train_std,
             )
 
             results[rewirer].append(final_val_loss)
@@ -378,56 +457,72 @@ def run_experiment(config, graphs_train, graphs_val):
     with open("data/results/" + config.wandb.experiment_name + ".json", "w") as f:
         json.dump(results, f)
 
-    pprint(results)
+    return results
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config_fn", help="configuration file name", type=str)
+    parser.add_argument("--c2_over_c1", help="c2/c1", type=float)
+
     args = parser.parse_args()
 
     with open(f"configs/{args.config_fn}", "r") as f:
         config = EasyDict(yaml.safe_load(f))
+
     print(config)
 
-    for c2 in config.data.c2s:
-        set_seed(config.data.seed)
-        config.data.c2 = c2
-        if config.data.name == "SalientDists":
-            graphs_train, graphs_val = get_data_SalientDists(
-                dataset=config.data.dataset,
-                c1=config.data.c1,
-                c2=config.data.c2,
-                c3=config.data.c3,
-                d=config.data.d,
-                normalise=config.data.normalise,
-                min_train_nodes=config.data.min_train_nodes,
-                max_train_nodes=config.data.max_train_nodes,
-                min_val_nodes=config.data.min_val_nodes,
-                max_val_nodes=config.data.max_val_nodes,
-                train_size=config.data.train_size,
-                val_size=config.data.val_size,
-                verbose=config.run.silent,
-            )
-        elif config.data.name == "ColourInteract":
-            graphs_train, graphs_val = get_data_ColourInteract(
-                dataset=config.data.dataset,
-                c1=config.data.c1,
-                c2=config.data.c2,
-                normalise=config.data.normalise,
-                num_colours=config.data.num_colours,
-                min_train_nodes=config.data.min_train_nodes,
-                max_train_nodes=config.data.max_train_nodes,
-                min_val_nodes=config.data.min_val_nodes,
-                max_val_nodes=config.data.max_val_nodes,
-                train_size=config.data.train_size,
-                val_size=config.data.val_size,
-                verbose=config.run.silent,
-            )
+    results = {}
+
+    # for c2 in config.data.c2s:
+    #     set_seed(config.data.seed)
+    #     config.data.c2 = c2
+    #     if config.data.name == "SalientDists":
+    #         graphs_train, graphs_val = get_data_SalientDists(
+    #             dataset=config.data.dataset,
+    #             c1=config.data.c1,
+    #             c2=config.data.c2,
+    #             c3=config.data.c3,
+    #             d=config.data.d,
+    #             normalise=config.data.normalise,
+    #             min_train_nodes=config.data.min_train_nodes,
+    #             max_train_nodes=config.data.max_train_nodes,
+    #             min_val_nodes=config.data.min_val_nodes,
+    #             max_val_nodes=config.data.max_val_nodes,
+    #             train_size=config.data.train_size,
+    #             val_size=config.data.val_size,
+    #             verbose=config.run.silent,
+    #         )
+    if config.data.name == "ColourInteract":
+        config.data.c1 = 1 / (1 + args.c2_over_c1)
+        config.data.c2 = args.c2_over_c1 / (1 + args.c2_over_c1)
+
+        assert (
+            config.data.c1 + config.data.c2 == 1.0
+        ), f"{config.data.c1} + {config.data.c2} != 1.0"
+
+        graphs_train, graphs_val = get_data_ColourInteract(
+            dataset=config.data.dataset,
+            c1=config.data.c1,
+            c2=config.data.c2,
+            normalise=config.data.normalise,
+            num_colours=config.data.num_colours,
+            min_train_nodes=config.data.min_train_nodes,
+            max_train_nodes=config.data.max_train_nodes,
+            min_val_nodes=config.data.min_val_nodes,
+            max_val_nodes=config.data.max_val_nodes,
+            train_size=config.data.train_size,
+            val_size=config.data.val_size,
+            verbose=config.run.silent,
+        )
         for approach in config.model.approaches:
             config.model.approach = approach
 
-            run_experiment(config, graphs_train, graphs_val)
+            results = results | run_experiment(config, graphs_train, graphs_val)
+    else:
+        raise Exception
+
+    pprint(results)
 
     # quick_run(
     #     [
