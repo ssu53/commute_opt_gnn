@@ -469,6 +469,13 @@ def main():
         help="configuration file name",
         type=str,
     )
+
+    # for SalientDists
+    parser.add_argument("--c1", default=None, help="c1", type=float)
+    parser.add_argument("--c2", default=None, help="c2", type=float)
+    parser.add_argument("--c3", default=None, help="c3", type=float)
+
+    # for ColourInteract
     parser.add_argument("--c2_over_c1", default=1.0, help="c2/c1", type=float)
 
     args = parser.parse_args()
@@ -499,7 +506,37 @@ def main():
     #             val_size=config.data.val_size,
     #             verbose=config.run.silent,
     #         )
-    if config.data.name == "ColourInteract":
+    if config.data.name == "SalientDists":
+        
+        config.data.c1 = args.c1
+        config.data.c2 = args.c2
+        config.data.c3 = args.c3
+
+        print(config)
+
+        graphs_train, graphs_val = get_data_SalientDists(
+            dataset=config.data.dataset,
+            c1=config.data.c1,
+            c2=config.data.c2,
+            c3=config.data.c3,
+            d=config.data.d,
+            normalise=config.data.normalise,
+            min_train_nodes=config.data.min_train_nodes,
+            max_train_nodes=config.data.max_train_nodes,
+            min_val_nodes=config.data.min_val_nodes,
+            max_val_nodes=config.data.max_val_nodes,
+            train_size=config.data.train_size,
+            val_size=config.data.val_size,
+            verbose=config.run.silent,
+        )
+
+        for approach in config.model.approaches:
+            config.model.approach = approach
+
+            results = results | run_experiment(config, graphs_train, graphs_val)
+
+    elif config.data.name == "ColourInteract":
+
         config.data.c1 = 1 / (1 + args.c2_over_c1)
         config.data.c2 = args.c2_over_c1 / (1 + args.c2_over_c1)
 

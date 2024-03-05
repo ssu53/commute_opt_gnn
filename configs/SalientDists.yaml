@@ -1,14 +1,14 @@
 wandb:
   experiment_name: ''
-  project: 'SalientDists Sweeps'
+  project: 'SalientDists Sweeps 03.05'
   entity: 'commute_opt_gnn'
 
 data:
   name: SalientDists
   dataset : 'ZINC'
-  c1: 1.0
-  c2s: [0.01, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 100.0]
-  c3: 0.05
+  c1: None
+  c2: None
+  c3: None
   d: 5
   train_size: 5000
   val_size: 500
@@ -16,7 +16,7 @@ data:
   max_train_nodes: 30
   min_val_nodes: 30
   max_val_nodes: 35
-  rewirers: ["aligned_cayley", "cayley"]
+  rewirers: ["aligned_cayley", "cayley", "distance_d_pairs"]
   normalise: False
   seed: 93
 
@@ -31,10 +31,13 @@ model:
   
 train:
   lr: 0.0001
+  warmup: 50
+  gamma_decay: 0.95
   num_epochs: 200
   print_every: 10
   train_batch_size: 32
   val_batch_size: 32
+  loss_fn: "MSE"
 
 run:
   silent: False
