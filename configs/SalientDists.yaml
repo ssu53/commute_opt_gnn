@@ -1,6 +1,6 @@
 wandb:
   experiment_name: ''
-  project: 'SalientDists Sweeps 03.05'
+  project: 'SalientDists Sweeps 03.05 v2'
   entity: 'commute_opt_gnn'
 
 data:

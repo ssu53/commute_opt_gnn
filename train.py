@@ -18,7 +18,8 @@ import wandb
 from generate_data import get_data_ColourInteract, get_data_SalientDists
 from models import GINModel
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 
 def train_model(data, model, optimiser, loss_fn):
@@ -151,7 +152,6 @@ def train_eval_loop(
 
 
 def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     with open(f"configs/{config_file}", "r") as f:
         config = EasyDict(yaml.safe_load(f))
