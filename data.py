@@ -497,6 +497,8 @@ class SalientDists(MyGraph):
                     if dist == self.d:
                         g1.add_edge(i, j)
 
+            # print(f"{g1.nodes=}")
+            # print(f"{g1.edges=}")
             # create G2 as trimmed Cayley expander
 
             if self.num_nodes < 2:
@@ -515,16 +517,34 @@ class SalientDists(MyGraph):
             correspondence_1_to_2 = get_correspondence(g1, g2)
             correspondence_2_to_1 = {v: k for k, v in correspondence_1_to_2.items()}
 
+            # print(correspondence_2_to_1)
+
+            # print(f"{g2.nodes=}")
+            # print(f"{g2.edges=}")
+
             # produce rewired edge index
 
-            rewire_edge_index = nx.relabel_nodes(g2, correspondence_2_to_1)
+            g2_aligned = nx.relabel_nodes(g2, correspondence_2_to_1)
 
-            # IGOR CHANGED THIS
-            rewire_edge_index = from_networkx(rewire_edge_index).edge_index
-            # rewire_edge_index = einops.rearrange(
-            #     torch.tensor(list(rewire_edge_index.edges)),
+            # print(f"{g2_aligned.nodes=}")
+            # print(f"{g2_aligned.edges=}")
+
+            # sort this graph to get correctly labelled edge_index using from_networkx
+            g2_aligned_sorted = nx.Graph()
+            g2_aligned_sorted.add_nodes_from(sorted(g2_aligned.nodes(data=True)))
+            g2_aligned_sorted.add_edges_from(g2_aligned.edges(data=True))
+
+            # print(f"{g2_aligned_sorted.nodes=}")
+            # print(f"{g2_aligned_sorted.edges=}")
+
+            rewire_edge_index = from_networkx(g2_aligned_sorted).edge_index
+            
+            # rewire_edge_index_alt = einops.rearrange(
+            #     torch.tensor(list(g2_aligned.edges)),
             #     "e n -> n e",
             # )
+
+            # print(rewire_edge_index)
 
             self.rewire_edge_index = rewire_edge_index
 
