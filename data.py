@@ -334,7 +334,9 @@ class ColourInteract(MyGraph):
             if connect_clusters and colour >= 0:
                 graph.add_edge(node1, node2)
 
-
+        # nx.draw(graph, node_color=self.colours, node_size=50)
+        # plt.savefig("test.png")
+        # exit()
 
         graph_sorted = nx.Graph()
         graph_sorted.add_nodes_from(sorted(graph.nodes(data=True)))
@@ -343,10 +345,9 @@ class ColourInteract(MyGraph):
         reverse_edges = [(v, u) for (u, v) in graph.edges()]
         graph_sorted.add_edges_from(reverse_edges)
 
-        if self.num_nodes > 160:
-            nx.draw(graph_sorted, node_color=self.colours, node_size=50)
-            plt.savefig("test-cayley-clusters.png")
-            exit()
+        # nx.draw(graph_sorted, node_color=self.colours, node_size=50)
+        # plt.savefig("test.png")
+        # exit()
 
         # assert graph_sorted.number_of_nodes() == self.num_nodes
 
