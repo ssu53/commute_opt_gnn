@@ -465,7 +465,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--config_fn",
-        default="debug_ColourInteract-OOD.yaml",
+        default="debug_ColourInteract.yaml",
         help="configuration file name",
         type=str,
     )

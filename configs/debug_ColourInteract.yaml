@@ -8,13 +8,13 @@ data:
   dataset : 'LRGB'
   c2_over_c1: 50
   num_colours: 4
-  train_size: 1500
+  train_size: 150
   val_size: 300
   min_train_nodes: 75
   max_train_nodes: 125
   min_val_nodes: 125
   max_val_nodes: 175
-  rewirers: ["cayley", "cayley_clusters"]
+  rewirers: ["cayley_clusters"]
   normalise: True
   seed: 91
 
@@ -23,8 +23,8 @@ model:
   num_layers: 5
   drop_prob: 0.5
   global_pool_aggr: global_add_pool
-  approach: "interleave"
-  seed: 73
+  approaches: ["interleave"]
+  seeds: [73]
   norm: ln
 
 train:
