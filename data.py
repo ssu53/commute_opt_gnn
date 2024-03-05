@@ -182,34 +182,34 @@ class ColourInteract(MyGraph):
                     dist_matrix[i, j] = self.distances[i][j]
 
             dist_matrix = torch.tensor(dist_matrix)
-            mask_1 = dist_matrix == 1
+            mask_1 = (dist_matrix == 1)
 
             interactions = torch.exp(self.values + self.values.T)
             interactions.fill_diagonal_(0)
             interactions = torch.triu(interactions)
 
-            y = torch.sum(self.c1 * interactions[mask_1]) 
+            y = torch.sum(self.c1 * interactions[mask_1])
 
             for color in range(self.num_colours):
-                color_mask = self.colours == color
+                color_mask = (self.colours == color)
 
                 same_color_matrix = color_mask.unsqueeze(1) & color_mask.unsqueeze(0)
                 same_color_matrix.fill_diagonal_(0)
                 same_color_matrix = torch.triu(same_color_matrix)
 
-                y += torch.sum(self.c2 * interactions[same_color_matrix]) 
+                y += torch.sum((1/(1+color**2)) * self.c2 * interactions[same_color_matrix])
 
             if self.normalise:
                 y = y / (self.num_nodes)
                 # y = y / (100 ** 2)
-            
+
             # print(y)
             # y = y / self.mean_num_nodes
             y = torch.tensor([y], dtype=torch.float)
             # y = y / (self.c2 / self.c1)
             # y = (1+torch.sin(y))/2
             # y = torch.tanh(y)
-            
+
         self.data.y = y
 
     def _set_edge_attr(self):
@@ -245,38 +245,46 @@ class ColourInteract(MyGraph):
         )
 
     def attach_cayley_clusters(self, connect_clusters=True):
-        node_idx = 0
         graph = nx.Graph()
 
         for colour in range(self.num_colours):
             num_nodes = (self.colours == colour).sum().item()
 
-            if num_nodes > 1:
-                cg_gen = CayleyGraphGenerator(num_nodes)
-                cg_gen.generate_cayley_graph()
-                cg_gen.trim_graph()
+            cg_gen = CayleyGraphGenerator(num_nodes)
+            cg_gen.generate_cayley_graph()
+            cg_gen.trim_graph()
 
-                one_colour_cayley = nx.relabel_nodes(
-                    cg_gen.G_trimmed,
-                    dict(zip(cg_gen.G_trimmed, range(node_idx, node_idx + num_nodes))),
-                )
+            mapping = {
+                org_idx: np.where(self.colours == colour)[0][col_idx]
+                for org_idx, col_idx in zip(cg_gen.G_trimmed.nodes, range(num_nodes))
+            }
+            remapped_graph = nx.relabel_nodes(cg_gen.G_trimmed, mapping)
 
-                if node_idx > 0 and connect_clusters:
-                    one_colour_cayley.add_edge(
-                        random.randint(node_idx, node_idx + num_nodes - 1),
-                        random.randint(0, node_idx - 1),
-                    )
+            if connect_clusters and colour > 0:
+                node1 = random.choice(list(graph.nodes))
+                node2 = random.choice(list(remapped_graph.nodes))
 
-                node_idx += num_nodes
+            graph = nx.union(graph, remapped_graph)
 
-                graph = nx.compose(graph, one_colour_cayley)
+            if connect_clusters and colour > 0:
+                graph.add_edge(node1, node2)
 
-        # nx.draw(graph, node_size=50)
+        # nx.draw(graph, node_color=self.colours, node_size=50)
         # plt.savefig("test.png")
         # exit()
 
+        graph_sorted = nx.Graph()
+        graph_sorted.add_nodes_from(sorted(graph.nodes(data=True)))
+        graph_sorted.add_edges_from(graph.edges(data=True))
+
+        # nx.draw(graph_sorted, node_color=self.colours, node_size=50)
+        # plt.savefig("test.png")
+        # exit()
+
+        assert graph_sorted.number_of_nodes() == self.num_nodes
+
         rewire_edge_index = einops.rearrange(
-            torch.tensor(list(graph.edges)),
+            torch.tensor(list(graph_sorted.edges)),
             "e n -> n e",
         )
 

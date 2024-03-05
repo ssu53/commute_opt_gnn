@@ -27,5 +27,5 @@ echo -e "JobID: $JOBID\n======" > $LOG
 echo "Time: `date`" >> $LOG
 echo "Running on master node: `hostname`" >> $LOG
 
-python train.py --config_fn "ColourInteract-not-OOD.yaml" --c2_over_c1 0.01 >> $LOG 2> $ERR
+python train.py --config_fn "ColourInteract-OOD.yaml" --c2_over_c1 10.0 >> $LOG 2> $ERR
 echo "Time: `date`" >> $LOG

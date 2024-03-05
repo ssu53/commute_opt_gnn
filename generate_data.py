@@ -59,6 +59,7 @@ def filter_graph_size(all_graphs, num_graphs: int, min_nodes: int, max_nodes: in
     num_bins = (max_nodes - min_nodes) // 5
 
     graphs_bins = {i: [] for i in range(min_nodes//5, (min_nodes//5)+num_bins)}
+    print(graphs_bins)
 
     for graph in all_graphs:
         if graph.num_nodes // 5 in graphs_bins:

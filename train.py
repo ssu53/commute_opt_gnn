@@ -373,12 +373,14 @@ def run_experiment(config, graphs_train, graphs_val):
 
         graphs_train_rewirer = []
         for g in graphs_train:
-            g.attach_rewirer(rewirer)
+            if rewirer is not None:
+                g.attach_rewirer(rewirer)
             graphs_train_rewirer.append(g.to_torch_data().to(device))
 
         graphs_val_rewirer = []
         for g in graphs_val:
-            g.attach_rewirer(rewirer)
+            if rewirer is not None:
+                g.attach_rewirer(rewirer)
             graphs_val_rewirer.append(g.to_torch_data().to(device))
 
         for seed in config.model.seeds:
@@ -462,8 +464,8 @@ def run_experiment(config, graphs_train, graphs_val):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config_fn", help="configuration file name", type=str)
-    parser.add_argument("--c2_over_c1", help="c2/c1", type=float)
+    parser.add_argument("--config_fn", default="debug_ColourInteract-OOD.yaml", help="configuration file name", type=str)
+    parser.add_argument("--c2_over_c1", default=1.0, help="c2/c1", type=float)
 
     args = parser.parse_args()
 

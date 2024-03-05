@@ -1,14 +1,14 @@
 wandb:
   experiment_name: ''
-  project: 'ColourInteract Sweeps Monday no-OOD sin'
+  project: 'ColourInteract Sweeps Monday no-OOD Debug'
   entity: 'commute_opt_gnn'
 
 data:
   name: ColourInteract
   dataset : 'LRGB'
-  num_colours: 6
-  train_size: 750
-  val_size: 100
+  num_colours: 4
+  train_size: 1500
+  val_size: 150
   min_train_nodes: 75
   max_train_nodes: 125
   min_val_nodes: 75
@@ -18,16 +18,16 @@ data:
   seed: 91
 
 model:
-  hidden_channels: 10
+  hidden_channels: 8
   num_layers: 5
-  drop_prob: 0.5
+  drop_prob: 0.1
   global_pool_aggr: global_mean_pool
-  approaches: ["interleave", "only_original", "only_diff"]
-  seeds: [17, 71, 117, 61, 13]
+  approaches: ["interleave", "only_original"]
+  seeds: [17] # , 71, 117
   norm: ln
   
 train:
-  lr: 0.01
+  lr: 0.001
   warmup: 50
   gamma_decay: 0.95
   num_epochs: 200
