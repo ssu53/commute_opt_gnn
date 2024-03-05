@@ -35,8 +35,7 @@ class CayleyGraphGenerator:
         """
         n = 1
         while True:
-            size = n**3 * \
-                np.prod([1 - 1 / p**2 for p in self._prime_factors(n)])
+            size = n**3 * np.prod([1 - 1 / p**2 for p in self._prime_factors(n)])
             if size >= self.V:
                 return n
             n += 1
@@ -63,21 +62,25 @@ class CayleyGraphGenerator:
 
         Algorithm 1
         """
-        elements = self.get_group_elements()
+        if self.V == 1:
+            self.adj_matrix = np.array([[0]])
+            self.adj_matrix_to_graph()
+        else:
+            elements = self.get_group_elements()
 
-        self.adj_matrix = np.zeros((len(elements), len(elements)), dtype=int)
+            self.adj_matrix = np.zeros((len(elements), len(elements)), dtype=int)
 
-        element_to_index = {
-            self.matrix_to_tuple(element): idx for idx, element in enumerate(elements)
-        }
+            element_to_index = {
+                self.matrix_to_tuple(element): idx for idx, element in enumerate(elements)
+            }
 
-        for i, u in enumerate(elements):
-            for g in self.gen_set:
-                v = np.dot(u, g) % self.n
-                j = element_to_index[self.matrix_to_tuple(v)]
-                self.adj_matrix[i, j] = 1
+            for i, u in enumerate(elements):
+                for g in self.gen_set:
+                    v = np.dot(u, g) % self.n
+                    j = element_to_index[self.matrix_to_tuple(v)]
+                    self.adj_matrix[i, j] = 1
 
-        self.adj_matrix_to_graph()
+            self.adj_matrix_to_graph()
 
     def get_group_elements(self):
         """
@@ -109,6 +112,10 @@ class CayleyGraphGenerator:
                 if self.adj_matrix[i, j] == 1:
                     self.G.add_edge(i, j)
 
+        assert (
+            self.G.number_of_nodes() >= self.V
+        ), f"The graph has the wrong number of nodes, it has {self.G.number_of_nodes()} nodes but should have at least {self.V} nodes)"
+
     def trim_graph(self):
         """
         Performs BFS on the self.G graph and creates a new graph self.G_trimmed
@@ -121,7 +128,10 @@ class CayleyGraphGenerator:
                 "The graph G has not been created. Use create_cayley_graph() first."
             )
 
-        bfs_nodes = list(nx.bfs_edges(self.G, source=0))
+        try:
+            bfs_nodes = list(nx.bfs_edges(self.G, source=0))
+        except:
+            raise Exception(f"Could not perform BFS starting at 0 on graph with nodes {self.G.nodes}")
 
         visited_nodes = {0}
         for u, v in bfs_nodes:

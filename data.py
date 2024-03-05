@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
+from torch_geometric.utils.convert import from_networkx
 
 from generate_cayley_graph import CayleyGraphGenerator
 
@@ -68,14 +69,16 @@ class MyGraph:
         cg_gen.generate_cayley_graph()
         cg_gen.trim_graph()
 
-        rewire_edge_index = nx.relabel_nodes(
+        rewired_graph = nx.relabel_nodes(
             cg_gen.G_trimmed, dict(zip(cg_gen.G_trimmed, range(self.num_nodes)))
         )
 
-        rewire_edge_index = einops.rearrange(
-            torch.tensor(list(rewire_edge_index.edges)),
-            "e n -> n e",
-        )
+        # rewire_edge_index = einops.rearrange(
+        #     torch.tensor(list(rewire_edge_index.edges)),
+        #     "e n -> n e",
+        # )
+
+        rewire_edge_index = from_networkx(rewired_graph).edge_index
 
         self.rewire_edge_index = rewire_edge_index
 
@@ -114,6 +117,9 @@ class ColourInteract(MyGraph):
         self.c1 = c1
         self.c2 = c2
         self.num_colours = num_colours
+
+        self.num_coloured_nodes = torch.randint(low=25, high=75, size=(1,)).item()
+
         self.mean_num_nodes = mean_num_nodes
 
         self.values = None
@@ -139,6 +145,22 @@ class ColourInteract(MyGraph):
         set categorical "colours", uniformly from a set of self.size num_colours
         """
         colours = torch.randint(low=0, high=self.num_colours, size=(self.num_nodes,))
+
+        one_hot_colours = torch.nn.functional.one_hot(
+                colours, num_classes=self.num_colours
+            )
+        try:
+            indices_to_keep_coloured = random.sample(range(self.num_nodes), self.num_coloured_nodes)
+            indices_to_make_uncoloured = [idx for idx in range(self.num_nodes) if idx not in indices_to_keep_coloured]
+        except:
+            raise Exception(f"Tried to sample {self.num_coloured_nodes} nodes from {self.num_nodes} nodes")
+        
+        colours[indices_to_make_uncoloured] = -1
+        one_hot_colours[indices_to_make_uncoloured] = torch.zeros(self.num_colours, dtype=torch.int64)
+
+        assert sum(torch.sum(one_hot_colours, dim=0)) == self.num_coloured_nodes
+
+        self.one_hot_colours = one_hot_colours
         self.colours = colours
 
     def _set_x(self, x):
@@ -150,10 +172,8 @@ class ColourInteract(MyGraph):
                 self._set_values()
             if self.colours is None:
                 self._set_colours()
-            colours = torch.nn.functional.one_hot(
-                self.colours, num_classes=self.num_colours
-            )
-            x = torch.hstack((self.values, colours))
+
+            x = torch.hstack((self.values, self.one_hot_colours))
             assert x.shape == (self.num_nodes, 1 + self.num_colours)
 
         self.data.x = x
@@ -190,6 +210,8 @@ class ColourInteract(MyGraph):
 
             y = torch.sum(self.c1 * interactions[mask_1])
 
+            colour_interactions = 0
+
             for color in range(self.num_colours):
                 color_mask = (self.colours == color)
 
@@ -197,11 +219,21 @@ class ColourInteract(MyGraph):
                 same_color_matrix.fill_diagonal_(0)
                 same_color_matrix = torch.triu(same_color_matrix)
 
-                y += torch.sum((1/(1+color**2)) * self.c2 * interactions[same_color_matrix])
+                colour_interactions += torch.sum(same_color_matrix)
+
+                y += torch.sum(self.c2 * interactions[same_color_matrix])
+
+
+            # print(f"Contribution from dist 1 interactions: ", torch.sum(self.c1 * interactions[mask_1]))
+            # print(f"Contributions from colour interactions: ", y - torch.sum(self.c1 * interactions[mask_1]))
 
             if self.normalise:
                 y = y / (self.num_nodes)
                 # y = y / (100 ** 2)
+
+
+            # print(colour_interactions)
+
 
             # print(y)
             # y = y / self.mean_num_nodes
@@ -229,6 +261,8 @@ class ColourInteract(MyGraph):
             self.attach_cayley_clusters()
         elif rewirer == "unconnected_cayley_clusters":
             self.attach_cayley_clusters(connect_clusters=False)
+        elif rewirer == "fully_connected_clusters":
+            self.attach_fully_connected_clusters()
         else:
             raise NotImplementedError
 
@@ -244,11 +278,42 @@ class ColourInteract(MyGraph):
             id=self.id,
         )
 
+    def attach_fully_connected_clusters(self):
+        graph = nx.Graph()
+
+        for colour in range(-1, self.num_colours):
+            num_nodes = (self.colours == colour).sum().item()
+            this_colour_idxs = [idx for idx in range(self.num_nodes) if self.colours[idx] == colour]
+
+            for i in range(num_nodes):
+                for j in range(i + 1, num_nodes):
+                    graph.add_edge(this_colour_idxs[i], this_colour_idxs[j])
+
+        graph_sorted = nx.Graph()
+        graph_sorted.add_nodes_from(sorted(graph.nodes(data=True)))
+        graph_sorted.add_edges_from(graph.edges(data=True))
+
+        # nx.draw(graph_sorted, node_color=self.colours, node_size=50)
+        # plt.savefig("test-fc.png")
+        # exit()
+
+        # rewire_edge_index = einops.rearrange(
+        #     torch.tensor(list(graph_sorted.edges)),
+        #     "e n -> n e",
+        # )
+
+        rewire_edge_index = from_networkx(graph_sorted).edge_index
+
+        self.rewire_edge_index = rewire_edge_index
+
     def attach_cayley_clusters(self, connect_clusters=True):
         graph = nx.Graph()
 
-        for colour in range(self.num_colours):
+        for colour in range(-1, self.num_colours):
             num_nodes = (self.colours == colour).sum().item()
+
+            if num_nodes == 0:
+                continue
 
             cg_gen = CayleyGraphGenerator(num_nodes)
             cg_gen.generate_cayley_graph()
@@ -260,13 +325,13 @@ class ColourInteract(MyGraph):
             }
             remapped_graph = nx.relabel_nodes(cg_gen.G_trimmed, mapping)
 
-            if connect_clusters and colour > 0:
+            if connect_clusters and colour >= 0:
                 node1 = random.choice(list(graph.nodes))
                 node2 = random.choice(list(remapped_graph.nodes))
 
             graph = nx.union(graph, remapped_graph)
 
-            if connect_clusters and colour > 0:
+            if connect_clusters and colour >= 0:
                 graph.add_edge(node1, node2)
 
         # nx.draw(graph, node_color=self.colours, node_size=50)
@@ -277,16 +342,21 @@ class ColourInteract(MyGraph):
         graph_sorted.add_nodes_from(sorted(graph.nodes(data=True)))
         graph_sorted.add_edges_from(graph.edges(data=True))
 
+        reverse_edges = [(v, u) for (u, v) in graph.edges()]
+        graph_sorted.add_edges_from(reverse_edges)
+
         # nx.draw(graph_sorted, node_color=self.colours, node_size=50)
         # plt.savefig("test.png")
         # exit()
 
-        assert graph_sorted.number_of_nodes() == self.num_nodes
+        # assert graph_sorted.number_of_nodes() == self.num_nodes
 
-        rewire_edge_index = einops.rearrange(
-            torch.tensor(list(graph_sorted.edges)),
-            "e n -> n e",
-        )
+        # rewire_edge_index = einops.rearrange(
+        #     torch.tensor(list(graph_sorted.edges)),
+        #     "e n -> n e",
+        # )
+
+        rewire_edge_index = from_networkx(graph_sorted).edge_index
 
         self.rewire_edge_index = rewire_edge_index
 
@@ -449,10 +519,12 @@ class SalientDists(MyGraph):
 
             rewire_edge_index = nx.relabel_nodes(g2, correspondence_2_to_1)
 
-            rewire_edge_index = einops.rearrange(
-                torch.tensor(list(rewire_edge_index.edges)),
-                "e n -> n e",
-            )
+            # IGOR CHANGED THIS
+            rewire_edge_index = from_networkx(rewire_edge_index).edge_index
+            # rewire_edge_index = einops.rearrange(
+            #     torch.tensor(list(rewire_edge_index.edges)),
+            #     "e n -> n e",
+            # )
 
             self.rewire_edge_index = rewire_edge_index
 

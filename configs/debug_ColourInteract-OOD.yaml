@@ -1,6 +1,6 @@
 wandb:
   experiment_name: ''
-  project: 'ColourInteract Sweeps DEBUG'
+  project: 'ColourInteract Sweeps DEBUG 2pm OOD'
   entity: 'commute_opt_gnn'
 
 data:
@@ -8,12 +8,12 @@ data:
   dataset : 'LRGB'
   num_colours: 4
   train_size: 1500
-  val_size: 150
+  val_size: 300
   min_train_nodes: 75
   max_train_nodes: 125
-  min_val_nodes: 75
-  max_val_nodes: 125
-  rewirers: ["cayley_clusters"]
+  min_val_nodes: 125
+  max_val_nodes: 175
+  rewirers: ["unconnected_cayley_clusters", "cayley"]
   normalise: True
   seed: 91
 
@@ -23,7 +23,7 @@ model:
   drop_prob: 0.5
   global_pool_aggr: global_mean_pool
   approaches: ["interleave", "only_original"]
-  seeds: [17] # , 71, 117
+  seeds: [71] # , 71, 117
   norm: ln
   
 train:

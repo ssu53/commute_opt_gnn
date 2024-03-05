@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 import os
 import random
 from pprint import pprint
@@ -9,13 +10,7 @@ import torch
 import yaml
 from easydict import EasyDict
 from prettytable import PrettyTable
-from torch.optim.lr_scheduler import (
-    ConstantLR,
-    CosineAnnealingWarmRestarts,
-    ExponentialLR,
-    LinearLR,
-    SequentialLR,
-)
+from torch.optim.lr_scheduler import ExponentialLR, LinearLR, SequentialLR
 from torch_geometric.loader import DataLoader
 from tqdm import tqdm
 
@@ -97,7 +92,6 @@ def train_eval_loop(
                 # scheduler.step(epoch + i / iters)
             scheduler.step()
 
-            
             train_loss = np.mean(running_train_loss)
 
             if epoch % print_every == 0:
@@ -109,7 +103,7 @@ def train_eval_loop(
                     wandb.log(
                         {
                             "train/loss": train_loss,
-                            "train/loss_over_variance": train_loss / (train_std ** 2),
+                            "train/loss_over_variance": train_loss / (train_std**2),
                             "eval/loss": val_loss,
                             "train/learning_rate": scheduler.get_last_lr()[0],
                         }
@@ -119,7 +113,7 @@ def train_eval_loop(
                     wandb.log(
                         {
                             "train/loss": train_loss,
-                            "train/loss_over_variance": train_loss / (train_std ** 2),
+                            "train/loss_over_variance": train_loss / (train_std**2),
                             "train/learning_rate": scheduler.get_last_lr()[0],
                         }
                     )
@@ -144,7 +138,11 @@ def train_eval_loop(
             )
         )
 
-    end_results = {"end": val_loss, "best": min(epoch2valloss.values()), "train/loss_over_variance": train_loss / (train_std ** 2)}
+    end_results = {
+        "end": val_loss,
+        "best": min(epoch2valloss.values()),
+        "train/loss_over_variance": train_loss / (train_std**2),
+    }
 
     del optimiser
     del loss_fn
@@ -184,8 +182,8 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
         config.data.c1 = 1 / (1 + config.data.c2_over_c1)
         config.data.c2 = config.data.c2_over_c1 / (1 + config.data.c2_over_c1)
 
-        assert (
-            config.data.c1 + config.data.c2 == 1.0
+        assert math.isclose(
+            config.data.c1 + config.data.c2, 1.0
         ), f"{config.data.c1} + {config.data.c2} != 1.0"
 
         graphs_train, graphs_val = get_data_ColourInteract(
@@ -207,9 +205,7 @@ def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
 
     train_mean = np.mean([g.y.cpu() for g in graphs_train])
     train_std = np.std([g.y.cpu() for g in graphs_train])
-    print(
-        f"train targets: {train_mean:.2f} +/- {train_std:.3f}"
-    )
+    print(f"train targets: {train_mean:.2f} +/- {train_std:.3f}")
     print(
         f"val targets: {np.mean([g.y.cpu() for g in graphs_val]):.2f} +/- {np.std([g.y.cpu() for g in graphs_val]):.3f}"
     )
@@ -320,6 +316,7 @@ def set_seed(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+
 def count_parameters(model):
     table = PrettyTable(["Modules", "Parameters"])
     total_params = 0
@@ -332,7 +329,7 @@ def count_parameters(model):
     print(table)
     print(f"Total Trainable Params: {total_params}")
     return total_params
-    
+
 
 def run_experiment(config, graphs_train, graphs_val):
     print(config)
@@ -432,7 +429,9 @@ def run_experiment(config, graphs_train, graphs_val):
             ).to(device)
 
             print(model)
-            print(f"Total number parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+            print(
+                f"Total number parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}"
+            )
             # count_parameters(model)
 
             final_val_loss = train_eval_loop(
@@ -464,7 +463,12 @@ def run_experiment(config, graphs_train, graphs_val):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config_fn", default="debug_ColourInteract-OOD.yaml", help="configuration file name", type=str)
+    parser.add_argument(
+        "--config_fn",
+        default="debug_ColourInteract-OOD.yaml",
+        help="configuration file name",
+        type=str,
+    )
     parser.add_argument("--c2_over_c1", default=1.0, help="c2/c1", type=float)
 
     args = parser.parse_args()

@@ -1,6 +1,6 @@
 wandb:
   experiment_name: ''
-  project: 'ColourInteract Sweeps Monday Evening layers 5 attempt 2'
+  project: 'ColourInteract Sweeps Tuesday Afternoon'
   entity: 'commute_opt_gnn'
 
 data:
@@ -24,7 +24,7 @@ model:
   global_pool_aggr: global_mean_pool
   approaches: ["interleave", "only_original"]
   seeds: [17, 71, 117]
-  norm: bn
+  norm: ln
   
 train:
   lr: 0.001
