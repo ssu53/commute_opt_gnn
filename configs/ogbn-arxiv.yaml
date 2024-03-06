@@ -7,12 +7,14 @@ model:
   hidden_channels: 128
   num_layers: 2
   drop_prob: 0.0
-  norm: 'ln'
+  rewirer: "by_class_train_only"
+  approach: "interleave"
+  norm: 'bn'
   seed: 42
   
 train:
   lr: 0.01
-  num_epochs: 200
+  num_epochs: 400
   print_every: 10
   verbose: True
   log_wandb: True
