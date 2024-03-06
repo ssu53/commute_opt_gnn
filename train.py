@@ -486,26 +486,7 @@ def main():
     print(config)
 
     results = {}
-
-    # for c2 in config.data.c2s:
-    #     set_seed(config.data.seed)
-    #     config.data.c2 = c2
-    #     if config.data.name == "SalientDists":
-    #         graphs_train, graphs_val = get_data_SalientDists(
-    #             dataset=config.data.dataset,
-    #             c1=config.data.c1,
-    #             c2=config.data.c2,
-    #             c3=config.data.c3,
-    #             d=config.data.d,
-    #             normalise=config.data.normalise,
-    #             min_train_nodes=config.data.min_train_nodes,
-    #             max_train_nodes=config.data.max_train_nodes,
-    #             min_val_nodes=config.data.min_val_nodes,
-    #             max_val_nodes=config.data.max_val_nodes,
-    #             train_size=config.data.train_size,
-    #             val_size=config.data.val_size,
-    #             verbose=config.run.silent,
-    #         )
+    
     if config.data.name == "SalientDists":
         
         config.data.c1 = args.c1

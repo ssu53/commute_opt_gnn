@@ -1,0 +1,21 @@
+wandb:
+  experiment_name: ''
+  project: 'arxiv 03.06'
+  entity: 'commute_opt_gnn'
+
+model:
+  hidden_channels: 128
+  num_layers: 2
+  drop_prob: 0.0
+  norm: 'ln'
+  seed: 42
+  
+train:
+  lr: 0.01
+  num_epochs: 200
+  print_every: 10
+  verbose: True
+  log_wandb: True
+
+run:
+  silent: False
