@@ -1,6 +1,6 @@
 wandb:
   experiment_name: ''
-  project: 'ColourInteract Sweeps Tuesday Afternoon'
+  project: 'ColourInteract Sweeps Wednesday Night'
   entity: 'commute_opt_gnn'
 
 data:
@@ -13,18 +13,18 @@ data:
   max_train_nodes: 125
   min_val_nodes: 125
   max_val_nodes: 175
-  rewirers: ["cayley_clusters", "cayley"]
-  normalise: True
+  rewirers: ["fully_connected_clusters", "unconnected_cayley_clusters", "cayley", "fully_connected"]
+  normalise: False
   seed: 91
 
 model:
   hidden_channels: 8
   num_layers: 5
-  drop_prob: 0.5
-  global_pool_aggr: global_mean_pool
+  drop_prob: 0.0
+  global_pool_aggr: global_add_pool
   approaches: ["interleave", "only_original"]
   seeds: [17, 71, 117]
-  norm: ln
+  norm: bn
   
 train:
   lr: 0.001

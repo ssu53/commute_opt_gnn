@@ -345,6 +345,9 @@ def run_experiment(config, graphs_train, graphs_val):
     if config.model.approach == "only_original":
         print("No rewiring.")
         rewirers = [None]
+    elif config.model.approach == "only_diff":
+        print("Only diff graph.")
+        rewirers = ['fully_connected']
     else:
         rewirers = config.data.rewirers
 
@@ -465,15 +468,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--config_fn",
-        default="debug_ColourInteract-OOD.yaml",
+        default="debug_ColourInteract.yaml",
         help="configuration file name",
         type=str,
     )
 
     # for SalientDists
-    parser.add_argument("--c1", default=None, help="c1", type=float)
-    parser.add_argument("--c2", default=None, help="c2", type=float)
-    parser.add_argument("--c3", default=None, help="c3", type=float)
+    parser.add_argument("--c1", default=1.0, help="c1", type=float)
+    parser.add_argument("--c2", default=1.0, help="c2", type=float)
+    parser.add_argument("--c3", default=1.0, help="c3", type=float)
 
     # for ColourInteract
     parser.add_argument("--c2_over_c1", default=1.0, help="c2/c1", type=float)
@@ -540,9 +543,9 @@ def main():
         config.data.c1 = 1 / (1 + args.c2_over_c1)
         config.data.c2 = args.c2_over_c1 / (1 + args.c2_over_c1)
 
-        assert (
-            config.data.c1 + config.data.c2 == 1.0
-        ), f"{config.data.c1} + {config.data.c2} != 1.0"
+        assert math.isclose(
+                    config.data.c1 + config.data.c2, 1.0
+                )
 
         graphs_train, graphs_val = get_data_ColourInteract(
             dataset=config.data.dataset,

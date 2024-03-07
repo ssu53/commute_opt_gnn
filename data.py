@@ -229,6 +229,8 @@ class ColourInteract(MyGraph):
 
             if self.normalise:
                 y = y / (self.num_nodes)
+            # else:
+            #     y = y / 1000
                 # y = y / (100 ** 2)
 
 
@@ -319,11 +321,16 @@ class ColourInteract(MyGraph):
             cg_gen.generate_cayley_graph()
             cg_gen.trim_graph()
 
+            assert nx.is_connected(cg_gen.G_trimmed)
+
             mapping = {
                 org_idx: np.where(self.colours == colour)[0][col_idx]
                 for org_idx, col_idx in zip(cg_gen.G_trimmed.nodes, range(num_nodes))
             }
+            
             remapped_graph = nx.relabel_nodes(cg_gen.G_trimmed, mapping)
+
+            assert nx.is_connected(remapped_graph)
 
             if connect_clusters and colour >= 0:
                 node1 = random.choice(list(graph.nodes))
@@ -334,27 +341,51 @@ class ColourInteract(MyGraph):
             if connect_clusters and colour >= 0:
                 graph.add_edge(node1, node2)
 
-        # nx.draw(graph, node_color=self.colours, node_size=50)
-        # plt.savefig("test.png")
-        # exit()
 
         graph_sorted = nx.Graph()
         graph_sorted.add_nodes_from(sorted(graph.nodes(data=True)))
         graph_sorted.add_edges_from(graph.edges(data=True))
 
-        reverse_edges = [(v, u) for (u, v) in graph.edges()]
-        graph_sorted.add_edges_from(reverse_edges)
+        # reverse_edges = [(v, u) for (u, v) in graph.edges()]
+        # graph_sorted.add_edges_from(reverse_edges)
 
-        # nx.draw(graph_sorted, node_color=self.colours, node_size=50)
-        # plt.savefig("test.png")
+        # # if self.num_nodes > 160:
+        # colours = {-1: 'white', 0: 'red', 1: 'blue', 2: 'green', 3: 'yellow', 4: 'purple', 5: 'orange', 6: 'pink', 7: 'brown', 8: 'grey', 9: 'cyan'}
+        # node_colours = [colours[int(colour)] for colour in self.colours]
+        # plt.clf()
+        # nx.draw(graph_sorted, node_color=node_colours, node_size=50)
+        # plt.savefig("test-cayley-clusters.png")
         # exit()
 
-        # assert graph_sorted.number_of_nodes() == self.num_nodes
+        # def draw_aligned_graphs(g1, g2, layout=nx.spring_layout, shift_x=2.0, filename='aligned-graphs.png'):
+        #     # Compute layouts
+        #     pos_g1 = layout(g1)
+        #     # Adjust the layout for g2 by shifting all positions from g1 layout
+        #     pos_g2 = {node: (x + shift_x, y) for node, (x, y) in layout(g2).items()}
 
-        # rewire_edge_index = einops.rearrange(
-        #     torch.tensor(list(graph_sorted.edges)),
-        #     "e n -> n e",
-        # )
+        #     # Figure setup
+        #     plt.figure(figsize=(12, 8))
+        #     ax = plt.gca()
+
+        #     # Draw the first graph
+        #     nx.draw(g1, pos=pos_g1, node_color=node_colours, edge_color='k', ax=ax, node_size=50, edgecolors ='black')
+
+        #     # Draw the second graph, shifted
+        #     nx.draw(g2, pos=pos_g2, node_color=node_colours, edge_color='k', ax=ax, node_size=50, edgecolors ='black')
+
+        #     # Draw dashed lines between corresponding nodes
+        #     for node in g1.nodes():
+        #         if node in pos_g1 and node in pos_g2:  # Ensure node exists in both layouts
+        #             start_pos = pos_g1[node]
+        #             end_pos = pos_g2[node]
+        #             plt.plot([start_pos[0], end_pos[0]], [start_pos[1], end_pos[1]], "k--", linewidth=0.5, zorder=-1, color='gray', alpha=0.5)
+
+        #     plt.axis('equal')
+        #     plt.axis('off')  # Optionally turn off the axis for a cleaner look
+        #     plt.savefig(filename, bbox_inches='tight')
+        #     plt.show()
+
+        # draw_aligned_graphs(to_networkx(self.data, to_undirected=True), graph_sorted)
 
         rewire_edge_index = from_networkx(graph_sorted).edge_index
 
