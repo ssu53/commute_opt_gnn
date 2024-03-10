@@ -15,7 +15,7 @@ from torch_geometric.loader import DataLoader
 from tqdm import tqdm
 
 import wandb
-from generate_data import get_data_ColourInteract, get_data_SalientDists
+from generate_synthetic_data import get_data_ColourInteract, get_data_SalientDists
 from gin import GINModel
 
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

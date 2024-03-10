@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from torch_geometric.utils import to_networkx
 
-from generate_data import load_base_graphs
+from generate_synthetic_data import load_base_graphs
 
 # %%
 

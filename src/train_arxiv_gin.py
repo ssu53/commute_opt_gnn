@@ -253,14 +253,16 @@ def get_rewire_edge_index(rewirer: str):
 
     base_rewire_dir = Path("../data/arxiv-rewirings")
 
-    if rewirer == "by_class_all":
+    if rewirer == "class_all":
         fn = "arxiv_rewire_by_class_all"
-    elif rewirer == "by_class_train_only":
+    elif rewirer == "class_train_only":
         fn = "arxiv_rewire_by_class_train_only"
-    elif rewirer == "by_kmeans_all":
+    elif rewirer == "kmeans_all":
         fn = "arxiv_rewire_by_kmeans_all"
-    elif rewirer == "by_mlp_all":
+    elif rewirer == "mlp_all":
         fn = "arxiv_rewire_by_mlp_all"
+    elif rewirer == "enriched-kmeans_all":
+        fn = "arxiv_rewire_by_enriched-kmeans_all"
     else:
         raise NotImplementedError
 
@@ -368,77 +370,77 @@ if __name__ == "__main__":
             main(config)
     
 
-def exploratory_stuff_to_clean_up():
+# def exploratory_stuff_to_clean_up():
 
-    graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
+#     graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
 
-    import matplotlib.pyplot as plt
-    from sklearn.cluster import KMeans
-    from sklearn.decomposition import PCA
+#     import matplotlib.pyplot as plt
+#     from sklearn.cluster import KMeans
+#     from sklearn.decomposition import PCA
 
-    features = graph.x[train_idx]
+#     features = graph.x[train_idx]
 
-    num_clusters = 10
-    kmeans_model = KMeans(num_clusters, random_state=0, n_init="auto").fit(features)
-    cluster_labels = kmeans_model.predict(features)
+#     num_clusters = 10
+#     kmeans_model = KMeans(num_clusters, random_state=0, n_init="auto").fit(features)
+#     cluster_labels = kmeans_model.predict(features)
 
-    pca_model = PCA(n_components=2)  # visualise in 2D
-    features_pca = pca_model.fit_transform(features)
+#     pca_model = PCA(n_components=2)  # visualise in 2D
+#     features_pca = pca_model.fit_transform(features)
 
-    plt.figure()
-    for i in range(num_clusters):
-        plt.scatter(
-            features_pca[cluster_labels == i, 0],
-            features_pca[cluster_labels == i, 1],
-            label=f"Cluster {i}",
-            alpha=0.5,
-        )
-    plt.show()
+#     plt.figure()
+#     for i in range(num_clusters):
+#         plt.scatter(
+#             features_pca[cluster_labels == i, 0],
+#             features_pca[cluster_labels == i, 1],
+#             label=f"Cluster {i}",
+#             alpha=0.5,
+#         )
+#     plt.show()
 
-    from collections import Counter
+#     from collections import Counter
 
-    import pandas as pd
-    import seaborn as sns
+#     import pandas as pd
+#     import seaborn as sns
 
-    ys = graph.y[train_idx]
+#     ys = graph.y[train_idx]
 
-    df = pd.DataFrame(index=range(num_classes), columns=range(num_clusters), dtype=int)
-    df.index.name = "class"
+#     df = pd.DataFrame(index=range(num_classes), columns=range(num_clusters), dtype=int)
+#     df.index.name = "class"
 
-    for i in range(num_clusters):
-        cnt = Counter(ys[cluster_labels == i].flatten().tolist())
-        cnt.subtract({label: 0 for label in range(num_classes)})
-        df[i] = cnt  # for zero counts
+#     for i in range(num_clusters):
+#         cnt = Counter(ys[cluster_labels == i].flatten().tolist())
+#         cnt.subtract({label: 0 for label in range(num_classes)})
+#         df[i] = cnt  # for zero counts
 
-    plt.figure(figsize=(5, 10))
-    sns.heatmap(df, annot=True, cmap="viridis", fmt="", cbar=False)
-    plt.show()
+#     plt.figure(figsize=(5, 10))
+#     sns.heatmap(df, annot=True, cmap="viridis", fmt="", cbar=False)
+#     plt.show()
 
-    df_norm_cluster = df / df.sum()
+#     df_norm_cluster = df / df.sum()
 
-    plt.figure(figsize=(5, 10))
-    sns.heatmap(df_norm_cluster, annot=True, cmap="viridis", fmt=".2f", cbar=False)
-    plt.show()
+#     plt.figure(figsize=(5, 10))
+#     sns.heatmap(df_norm_cluster, annot=True, cmap="viridis", fmt=".2f", cbar=False)
+#     plt.show()
 
-    df_norm_class = df.divide(df.sum(axis=1), axis=0)
+#     df_norm_class = df.divide(df.sum(axis=1), axis=0)
 
-    plt.figure(figsize=(5, 10))
-    sns.heatmap(df_norm_class, annot=True, cmap="viridis", fmt=".2f", cbar=False)
-    plt.show()
+#     plt.figure(figsize=(5, 10))
+#     sns.heatmap(df_norm_class, annot=True, cmap="viridis", fmt=".2f", cbar=False)
+#     plt.show()
 
-    # ----------
+#     # ----------
 
-    from compute_arxiv_rewire import check_valid
+#     from compute_arxiv_rewire import check_valid
 
-    graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
+#     graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
 
-    # the allowable indices are any!
-    # here we allow it to look at val and test to draw expander
-    rewire_edge_index = get_rewire_edge_index(rewirer="by_class_all")
-    check_valid(
-        rewire_edge_index, graph.y.squeeze(), torch.tensor(range(graph.num_nodes))
-    )
+#     # the allowable indices are any!
+#     # here we allow it to look at val and test to draw expander
+#     rewire_edge_index = get_rewire_edge_index(rewirer="by_class_all")
+#     check_valid(
+#         rewire_edge_index, graph.y.squeeze(), torch.tensor(range(graph.num_nodes))
+#     )
 
-    # the allowable indices are in train_idx only!
-    rewire_edge_index = get_rewire_edge_index(rewirer="by_class_train_only")
-    check_valid(rewire_edge_index, graph.y.squeeze(), train_idx)
+#     # the allowable indices are in train_idx only!
+#     rewire_edge_index = get_rewire_edge_index(rewirer="by_class_train_only")
+#     check_valid(rewire_edge_index, graph.y.squeeze(), train_idx)

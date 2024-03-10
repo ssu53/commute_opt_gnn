@@ -12,6 +12,8 @@ from generate_cayley_graph import CayleyGraphGenerator
 from train_arxiv_gin import get_ogbn_arxiv
 from train_arxiv_mlp import MLP
 
+import torch.nn.functional as F
+
 
 def get_cayley_clusters_rewiring(colours, allowable_idx, num_colours: int):
     """
@@ -37,8 +39,7 @@ def get_cayley_clusters_rewiring(colours, allowable_idx, num_colours: int):
         print(colour, num_nodes)
 
         if num_nodes == 0:
-            # raise ValueError(f"Colour {colour} not present in the graph, strange")
-            # MLP sometimes never predicts 12 
+            print("Concerning...")
             continue
 
         cg_gen = CayleyGraphGenerator(num_nodes)
@@ -102,24 +103,9 @@ def check_valid(rewire_edge_index, colours, allowable_idx):
     print("Passed basic checks!")
 
 
-def get_colours_from_kmeans(feats, num_classes, reduce=True):
+def get_colours_from_kmeans(feats, num_classes):
 
-    # feats has size (graph.num_nodes, 128), use PCA to reduce to (graph.num_nodes, 2)
-    # then use k-means to cluster into num_classes
-
-    if reduce:
-        pca = PCA(n_components=2)
-        reduced_feats = pca.fit_transform(feats)
-
-        print(reduced_feats.shape)
-
-        kmeans = KMeans(n_clusters=num_classes, random_state=0, tol=1e-6).fit(
-            reduced_feats
-        )
-
-    else:
-        print(feats.shape)
-        kmeans = KMeans(n_clusters=num_classes, random_state=0, tol=1e-6).fit(feats)
+    kmeans = KMeans(n_clusters=num_classes, n_init=5).fit(feats)
 
     return torch.from_numpy(kmeans.labels_.astype(np.int64))
 
@@ -127,11 +113,15 @@ def get_colours_from_kmeans(feats, num_classes, reduce=True):
 @torch.no_grad()
 def get_colours_from_mlp(feats, device="cpu"):
 
-    model = MLP(feats.size(-1), hidden_channels=256, out_channels=40, num_layers=3, dropout=0.5).to(
-        device
-    )
+    model = MLP(
+        feats.size(-1), hidden_channels=256, out_channels=40, num_layers=3, dropout=0.5
+    ).to(device)
 
-    model.load_state_dict(torch.load("../data/models/ogbn-arxiv-mlp-model.pth", map_location=torch.device('cpu')))
+    model.load_state_dict(
+        torch.load(
+            "../data/models/ogbn-arxiv-mlp-model.pth", map_location=torch.device("cpu")
+        )
+    )
 
     out = model(feats)
 
@@ -178,17 +168,11 @@ def main():
 
     # ------------------------------
 
-    k_means_colours = get_colours_from_kmeans(graph.x.numpy(), num_classes, reduce=True)
+    normalized_features = graph.x / torch.norm(graph.x, p=2, dim=1, keepdim=True)
+
+    k_means_colours = get_colours_from_kmeans(normalized_features.numpy(), num_classes)
 
     assert k_means_colours.size(0) == graph.num_nodes
-
-    print("If we just used the k-means colours, we would get accuracy:")
-    print(
-        f"Train: {sum(k_means_colours[train_idx] == graph.y.squeeze()[train_idx])/ len(train_idx)}"
-    )
-    print(
-        f"Valid: {sum(k_means_colours[valid_idx] == graph.y.squeeze()[valid_idx])/ len(valid_idx)}"
-    )
 
     rewire_edge_index = get_cayley_clusters_rewiring(
         k_means_colours,
@@ -205,17 +189,39 @@ def main():
 
     # ------------------------------
 
+    one_hot_train = F.one_hot(graph.y.squeeze()[train_idx]).float()
+    avg_class = torch.mean(one_hot_train, dim=0)
+
+    enriched_features = torch.zeros((graph.x.shape[0], graph.x.shape[1]+40))
+
+    enriched_features[train_idx] = torch.cat((graph.x[train_idx], one_hot_train), dim=1)
+    enriched_features[valid_idx] = torch.cat((graph.x[valid_idx], avg_class.repeat(len(valid_idx), 1)), dim=1)
+    enriched_features[test_idx] = torch.cat((graph.x[test_idx], avg_class.repeat(len(test_idx), 1)), dim=1)
+
+    normalized_enriched_features = enriched_features / torch.norm(enriched_features, p=2, dim=1, keepdim=True)
+
+    k_means_colours = get_colours_from_kmeans(normalized_enriched_features.numpy(), num_classes)
+
+    assert k_means_colours.size(0) == graph.num_nodes
+
+    rewire_edge_index = get_cayley_clusters_rewiring(
+        k_means_colours,
+        allowable_idx=torch.tensor(range(graph.num_nodes)),
+        num_colours=num_classes,
+    )
+
+    with open("../data/arxiv-rewirings/arxiv_rewire_by_enriched-kmeans_all", "wb") as f:
+        pickle.dump(rewire_edge_index, f)
+
+    check_valid(
+        rewire_edge_index, k_means_colours, torch.tensor(range(graph.num_nodes))
+    )
+
+    # ------------------------------
+
     mlp_colours = get_colours_from_mlp(graph.x)
 
     assert mlp_colours.size(0) == graph.num_nodes
-
-    print("If we just used the MLP colours, we would get accuracy:")
-    print(
-        f"Train: {sum(mlp_colours[train_idx] == graph.y.squeeze()[train_idx])/ len(train_idx)}"
-    )
-    print(
-        f"Valid: {sum(mlp_colours[valid_idx] == graph.y.squeeze()[valid_idx])/ len(valid_idx)}"
-    )
 
     rewire_edge_index = get_cayley_clusters_rewiring(
         mlp_colours,
