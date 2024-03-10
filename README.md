@@ -38,9 +38,26 @@ python train.py --config_fn ../configs/ColourInteract.yaml --c2_over_c1 k
 python train.py --config_fn ../configs/SalientDists.yaml --c1 i --c2 j --c3 k
 ```
 
+The dataset is loaded with the rewiring choice. 
+
+For the `SalientDists` synthetic data, availble rewirings are: 
+
+* `"cayley"` (BFS-trimmed Cayley expander graph)
+* `"interacting_pairs"` (all pairs at distance 1 and `d` that interact with coefficients `c1`, `c2`, as per the definition of this dataset, are connected) 
+* `"distance_d_pairs"` (all pairs at `d` that interact coefficient `c2` connected) 
+* `"aligned_cayley"` (union of pairs at distance `d` informs the non-random alignment of Cayley expander over base graph)
+* `"fully_connected"` (all nodes connected)a
+
+For the `ColourInteract` synthetic data, availble rewirings are: 
+* `"cayley"` (BFS-trimmed Cayley expander graph)
+* `"cayley_clusters"` (nodes of the same colour form a cayley subgraph, and subgraphs are sparsely connected with a single extra node/cluster) 
+* `"unconnected_cayley_clusters"` (nodes of the same colour form a cayley subgraph) 
+* `"fully_connected_clusters"` (all nodes of each colour are connected with eachother)
+* `"fully_connected"` (all nodes connected)
+
 ### `obgn-arxiv`
 
-Train MLP for mlp-based colours:
+(optional) Train MLP for mlp-based colours:
 
 ```
 python train_arxiv_mlp.py 
@@ -59,22 +76,7 @@ python train_arxiv_gin.py --config_fn ../configs/obgn-arxiv.yaml
 ```
 
 
-The dataset is loaded with the rewiring choice. 
 
-For the `SalientDists` synthetic data, availble rewirings are: 
-
-* `"cayley"` (BFS-trimmed Cayley expander graph)
-* `"interacting_pairs"` (all pairs at distance 1 and `d` that interact with coefficients `c1`, `c2`, as per the definition of this dataset, are connected) 
-* `"distance_d_pairs"` (all pairs at `d` that interact coefficient `c2` connected) 
-* `"aligned_cayley"` (union of pairs at distance `d` informs the non-random alignment of Cayley expander over base graph)
-* `"fully_connected"` (all nodes connected)a
-
-For the `ColourInteract` synthetic data, availble rewirings are: 
-* `"cayley"` (BFS-trimmed Cayley expander graph)
-* `"cayley_clusters"` (nodes of the same colour form a cayley subgraph, and subgraphs are sparsely connected with a single extra node/cluster) 
-* `"unconnected_cayley_clusters"` (nodes of the same colour form a cayley subgraph) 
-* `"fully_connected_clusters"` (all nodes of each colour are connected with eachother)
-* `"fully_connected"` (all nodes connected)
 
 ## To just generate the Cayley Graphs
 
