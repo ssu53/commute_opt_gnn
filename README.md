@@ -3,15 +3,56 @@
 ## Setup
 
 ```
-conda create --prefix /path/to/here/l65-env python=3.11
-conda activate /path/to/here/l65-env
+conda create --prefix /path/to/here/commute-opt-gnns-env python=3.11
+conda activate /path/to/here/commute-opt-gnns-env
 
-pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113
+pip install torch --extra-index-url https://download.pytorch.org/whl/cu113
 
 pip install -r requirements.txt
 ```
 
-## Generating Cayley Graphs
+
+## Models
+
+Currently, we only support working with a GIN convolution model: the Graph Isomorphism Network (GIN) introduced here https://arxiv.org/abs/1810.00826. 
+
+Our implementation `MyGINConv` of the convolution (in particular, the definition of the MLP), mimics the definition in the EGP (Wilson + Velikovic) code. `num_layers` of this module, combined with linear input and output projections, make up our `GINModel`. 
+
+All models are compatible with graph batching. 
+
+
+## Train and evaluate
+
+### Synthetic data
+
+For desired values of `i`, `j` and `k`:
+
+
+```
+python train.py --config_fn ColourInteract.yaml --c2_over_c1 k 
+
+python train.py --config_fn SalientDists.yaml --c1 i --c2 j --c3 k
+```
+
+
+The dataset is loaded with the rewiring choice. 
+
+For the `SalientDists` synthetic data, availble rewirings are: 
+
+* `"cayley"` (BFS-trimmed Cayley expander graph)
+* `"interacting_pairs"` (all pairs at distance 1 and `d` that interact with coefficients `c1`, `c2`, as per the definition of this dataset, are connected) 
+* `"distance_d_pairs"` (all pairs at `d` that interact coefficient `c2` connected) 
+* `"aligned_cayley"` (union of pairs at distance `d` informs the non-random alignment of Cayley expander over base graph)
+* `"fully_connected"` (all nodes connected)a
+
+For the `ColourInteract` synthetic data, availble rewirings are: 
+* `"cayley"` (BFS-trimmed Cayley expander graph)
+* `"cayley_clusters"` (nodes of the same colour form a cayley subgraph, and subgraphs are sparsely connected with a single extra node/cluster) 
+* `"unconnected_cayley_clusters"` (nodes of the same colour form a cayley subgraph) 
+* `"fully_connected_clusters"` (all nodes of each colour are connected with eachother)
+* `"fully_connected"` (all nodes connected)
+
+## To just generate the Cayley Graphs
 
 ```python
 V = 40 # The number of vertices of the input graph
@@ -21,36 +62,3 @@ generator.generate_cayley_graph() # Generate the Cayley graph
 generator.trim_graph() # Trim the Graph with BFS to have V nodes again
 generator.visualize_graph() # Visualize the graph (optional trimmed=False to see graph before trimming)
 ```
-
-![Cayley Graph Example](figures/cayley_graph_example.png)
-
-
-## Models
-
-Currently, we are only working with a GIN convolution model. Graph Isomorphism Network (GIN) introduced here: https://arxiv.org/abs/1810.00826. 
-
-Our implementation `MyGINConv` of the convolution (in particular, the definition of the MLP), mimics the definition in the EGP (Wilson + Velikovic) code. `num_layers` of this module, combined with linear input and output projections, make up our `GINModel`. 
-
-All models are compatible with graph batching. 
-
-
-## Training
-
-Run `python3 train.py --config_fn=YOUR_CONFIG_FILE_NAME`. `YOUR_CONFIG_FILE_NAME`, e.g. `config0.yaml`, should be located ins `./configs`.
-
-
-The dataset is loaded with the rewiring choice. 
-
-For the `SalientDists` synthetic data, availble rewirings are: 
-
-* `"cayley"` (BFS-trimmed Cayley expander graph)
-* `"fully_connected"` (all nodes connected)
-* `"interacting_pairs"` (all pairs at distance 1 and `d` that interact with coefficients `c1`, `c2`, per the definition of this dataset) 
-* `"aligned_cayley"` (union of pairs at distance `d` informs the non-random alignment of Cayley expander over base graph)
-
-For the `ColourInteract` synthetic data, availble rewirings are: 
-* `"cayley"` (BFS-trimmed Cayley expander graph)
-* `"fully_connected"` (all nodes connected)
-* `"cayley_clusters"` (nodes of the same colour form a cayley subgraph, and subgraphs are sparsely connected with a single extra node/cluster) 
-
-![Cayley Cluster Example](figures/clusters_prior.png)
