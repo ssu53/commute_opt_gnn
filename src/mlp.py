@@ -24,11 +24,14 @@ class MLP(torch.nn.Module):
         for bn in self.bns:
             bn.reset_parameters()
 
-    def forward(self, x):
+    def forward(self, x, return_feats=False):
         for i, lin in enumerate(self.lins[:-1]):
             x = lin(x)
             x = self.bns[i](x)
             x = F.relu(x)
             x = F.dropout(x, p=self.dropout, training=self.training)
-        x = self.lins[-1](x)
-        return torch.log_softmax(x, dim=-1)
+        out = self.lins[-1](x)
+        if return_feats:
+            return torch.log_softmax(out, dim=-1), x
+        else:
+            return torch.log_softmax(out, dim=-1)

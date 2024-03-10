@@ -261,6 +261,8 @@ def get_rewire_edge_index(rewirer: str):
         fn = "arxiv_rewire_by_kmeans_all"
     elif rewirer == "mlp_all":
         fn = "arxiv_rewire_by_mlp_all"
+    elif rewirer == "mlp_feats_all":
+        fn = "arxiv_rewire_by_mlp_feats_all"
     elif rewirer == "enriched-kmeans_all":
         fn = "arxiv_rewire_by_enriched-kmeans_all"
     else:

@@ -129,6 +129,25 @@ def get_colours_from_mlp(feats, device="cpu"):
 
     return out.argmax(dim=-1, keepdim=False)
 
+@torch.no_grad()
+def get_colours_from_mlp_feats(feats, device="cpu"):
+
+    model = MLP(
+        feats.size(-1), hidden_channels=256, out_channels=40, num_layers=3, dropout=0.5
+    ).to(device)
+
+    model.load_state_dict(
+        torch.load(
+            "../data/models/ogbn-arxiv-mlp-model.pth", map_location=torch.device("cpu")
+        )
+    )
+
+    out, mlp_feats = model(feats, return_feats=True)
+
+    kmeans = KMeans(n_clusters=40, n_init=5).fit(mlp_feats)
+
+    return torch.from_numpy(kmeans.labels_.astype(np.int64))
+
 
 def main():
 
@@ -230,6 +249,23 @@ def main():
     )
 
     with open("../data/arxiv-rewirings/arxiv_rewire_by_mlp_all", "wb") as f:
+        pickle.dump(rewire_edge_index, f)
+
+    check_valid(rewire_edge_index, mlp_colours, torch.tensor(range(graph.num_nodes)))
+
+    # ------------------------------
+
+    mlp_colours = get_colours_from_mlp_feats(graph.x)
+
+    assert mlp_colours.size(0) == graph.num_nodes
+
+    rewire_edge_index = get_cayley_clusters_rewiring(
+        mlp_colours,
+        allowable_idx=torch.tensor(range(graph.num_nodes)),
+        num_colours=num_classes,
+    )
+
+    with open("../data/arxiv-rewirings/arxiv_rewire_by_mlp_feats_all", "wb") as f:
         pickle.dump(rewire_edge_index, f)
 
     check_valid(rewire_edge_index, mlp_colours, torch.tensor(range(graph.num_nodes)))
