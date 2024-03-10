@@ -40,7 +40,9 @@ class MyGINConv(MessagePassing):
         return aggr_out
 
 
+
 class GINModel(nn.Module):
+    
     def __init__(
         self,
         in_channels: int,
@@ -61,7 +63,14 @@ class GINModel(nn.Module):
             num_layers: number of layers
             out_channels: dimension of output
             drop_prob: dropout probability
-            interleave_diff_graph: if True, every even layer conv layer message passes on the diffusion graph instead
+
+            exactly one of the following three options must be set to True:
+            interleave_diff_graph: every even layer conv layer message passes on the diffusion graph instead
+            only_original_graph:
+            only_diff_graph:
+
+            global_pool_aggr: pooling function. None makes this a node-level model
+            norm: normalisation in GINConv layers (bn for batch norm, ln for layer norm)
         """
 
         super().__init__()
@@ -85,6 +94,8 @@ class GINModel(nn.Module):
             self.pool = global_add_pool
         elif global_pool_aggr == "global_mean_pool":
             self.pool = global_mean_pool
+        elif global_pool_aggr is None:
+            self.pool = None
         else:
             raise NotImplementedError
 
@@ -121,8 +132,11 @@ class GINModel(nn.Module):
 
             x = self.drop(x)
 
-        x = self.pool(x, data.batch)  # (num_nodes, d) -> (batch_size, d)
+        if self.pool is not None:
+            x = self.pool(x, data.batch)  # (num_nodes, d) -> (batch_size, d)
         x = self.lin_out(x)
-        x = x.view(-1)
+
+        if self.pool is not None:
+            x = x.view(-1)
 
         return x
