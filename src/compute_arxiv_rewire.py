@@ -154,8 +154,6 @@ def main():
         num_colours=num_classes,
     )
 
-    exit()
-
     with open("../data/arxiv-rewirings/arxiv_rewire_by_class_train_only", "wb") as f:
         pickle.dump(rewire_edge_index, f)
 
