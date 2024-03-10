@@ -347,7 +347,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--config_fn",
-        default="configs/debug_ogbn-arxiv.yaml",
+        default="../configs/debug_ogbn-arxiv.yaml",
         help="configuration file name",
         type=str,
     )

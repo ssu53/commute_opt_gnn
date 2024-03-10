@@ -23,15 +23,39 @@ All models are compatible with graph batching.
 
 ## Train and evaluate
 
+```
+cd src
+```
+
 ### Synthetic data
 
 For desired values of `i`, `j` and `k`:
 
 
 ```
-python train.py --config_fn ColourInteract.yaml --c2_over_c1 k 
+python train.py --config_fn ../configs/ColourInteract.yaml --c2_over_c1 k 
 
-python train.py --config_fn SalientDists.yaml --c1 i --c2 j --c3 k
+python train.py --config_fn ../configs/SalientDists.yaml --c1 i --c2 j --c3 k
+```
+
+### `obgn-arxiv`
+
+Train MLP for mlp-based colours:
+
+```
+python train_arxiv_mlp.py 
+```
+
+Precompute rewirings:
+
+```
+python compute_arxiv_rewire.py
+```
+
+Train models:
+
+```
+python train_arxiv_gin.py --config_fn ../configs/obgn-arxiv.yaml
 ```
 
 

@@ -1,14 +1,13 @@
 wandb:
-  experiment_name: ''
-  project: 'arxiv 03.06'
+  project: 'OGBN-ARXIV 10.03'
   entity: 'commute_opt_gnn'
 
 model:
   hidden_channels: 128
   num_layers: 2
-  drop_prob: 0.0
-  rewirer: "by_class_train_only"
-  approach: "interleave"
+  drop_prob: 0.5
+  rewirers: ["by_class_train_only", "by_class_all", "by_kmeans_all", "by_mlp_all"]
+  approaches: ["only_original", "interleave"]
   norm: 'bn'
   seed: 42
   

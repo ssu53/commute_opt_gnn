@@ -151,9 +151,9 @@ def train_eval_loop(
     return end_results
 
 
-def quick_run(rewirers, config_file="debug_ColourInteract.yaml"):
+def quick_run(rewirers, config_file="../configs/debug_ColourInteract.yaml"):
 
-    with open(f"configs/{config_file}", "r") as f:
+    with open(config_file, "r") as f:
         config = EasyDict(yaml.safe_load(f))
 
     pprint(config)
@@ -483,7 +483,7 @@ def main():
 
     args = parser.parse_args()
 
-    with open(f"configs/{args.config_fn}", "r") as f:
+    with open(args.config_fn, "r") as f:
         config = EasyDict(yaml.safe_load(f))
 
     print(config)
