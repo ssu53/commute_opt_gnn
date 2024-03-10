@@ -144,7 +144,7 @@ def get_colours_from_mlp_feats(feats, device="cpu"):
 
     out, mlp_feats = model(feats, return_feats=True)
 
-    kmeans = KMeans(n_clusters=40, n_init=5).fit(mlp_feats)
+    kmeans = KMeans(n_clusters=40, n_init=1).fit(mlp_feats)
 
     return torch.from_numpy(kmeans.labels_.astype(np.int64))
 
