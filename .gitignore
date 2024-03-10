@@ -5,3 +5,9 @@ wandb/
 data/
 .vscode/launch.json
 nohup_out/
+slurm/
+*.sh
+*.png
+*.pgf
+figures/ignore/
+debug_*
