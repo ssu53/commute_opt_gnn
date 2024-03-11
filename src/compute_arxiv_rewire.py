@@ -14,6 +14,7 @@ from train_arxiv_mlp import MLP
 
 import torch.nn.functional as F
 
+import random
 
 def get_cayley_clusters_rewiring(colours, allowable_idx, num_colours: int):
     """
@@ -152,123 +153,169 @@ def get_colours_from_mlp_feats(feats, device="cpu"):
 def main():
 
     graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
+    
+    num_nodes = graph.y.shape[0]
+    proportion_corrupted = 0.5
+    num_corrupted = int(num_nodes * proportion_corrupted)
 
-    # ------------------------------
-    # Cayley clusters rewire edge index on only the train nodes
-    # prevent leakage from val and test set labels into train
+    boolean_list = [1] * num_corrupted + [0] * (num_nodes - num_corrupted)
+    random.shuffle(boolean_list)
+    boolean_list = torch.tensor(boolean_list, dtype=torch.bool)
+
+    corrupted_values = torch.randint(0, num_classes, (num_corrupted,))
+
+    corrupted_y = graph.y.squeeze().detach().clone()
+    corrupted_y[boolean_list] = corrupted_values
+
+    print(sum(corrupted_y == graph.y.squeeze()) / num_nodes)
 
     rewire_edge_index = get_cayley_clusters_rewiring(
-        graph.y.squeeze(),
-        allowable_idx=train_idx,
+        corrupted_y,
+        allowable_idx=torch.tensor(range(graph.num_nodes)),
         num_colours=num_classes,
     )
 
-    with open("../data/arxiv-rewirings/arxiv_rewire_by_class_train_only", "wb") as f:
+    with open("../data/arxiv-rewirings/arxiv_rewire_by_corrupted_0_5_class_all", "wb") as f:
         pickle.dump(rewire_edge_index, f)
 
-    check_valid(rewire_edge_index, graph.y.squeeze(), train_idx)
+    check_valid(
+        rewire_edge_index, corrupted_y, torch.tensor(range(graph.num_nodes))
+    )
+
+    save_dict = {
+        "graph": graph,
+        "train_idx": train_idx,
+        "valid_idx": valid_idx,
+        "test_idx": test_idx,
+        "num_classes": num_classes,
+        "corrupted_y": corrupted_y.unsqueeze(1),
+    }
+
+    with open("../data/ogbn_arxiv/corrupted_0_5_data.pkl", "wb") as f:
+        pickle.dump(save_dict, f)
 
     # ------------------------------
     # Cayley clusters rewire edge index on all nodes, irrespective of split
     # this is sensible only in the limit of perfect priors that are equivalent to knowing the label
 
-    rewire_edge_index = get_cayley_clusters_rewiring(
-        graph.y.squeeze(),
-        allowable_idx=torch.tensor(range(graph.num_nodes)),
-        num_colours=num_classes,
-    )
 
-    with open("../data/arxiv-rewirings/arxiv_rewire_by_class_all", "wb") as f:
-        pickle.dump(rewire_edge_index, f)
 
-    check_valid(
-        rewire_edge_index, graph.y.squeeze(), torch.tensor(range(graph.num_nodes))
-    )
+    # # ------------------------------
+    # # Cayley clusters rewire edge index on only the train nodes
+    # # prevent leakage from val and test set labels into train
 
-    # ------------------------------
+    # rewire_edge_index = get_cayley_clusters_rewiring(
+    #     graph.y.squeeze(),
+    #     allowable_idx=train_idx,
+    #     num_colours=num_classes,
+    # )
 
-    normalized_features = graph.x / torch.norm(graph.x, p=2, dim=1, keepdim=True)
+    # with open("../data/arxiv-rewirings/arxiv_rewire_by_class_train_only", "wb") as f:
+    #     pickle.dump(rewire_edge_index, f)
 
-    k_means_colours = get_colours_from_kmeans(normalized_features.numpy(), num_classes)
+    # check_valid(rewire_edge_index, graph.y.squeeze(), train_idx)
 
-    assert k_means_colours.size(0) == graph.num_nodes
+    # # ------------------------------
+    # # Cayley clusters rewire edge index on all nodes, irrespective of split
+    # # this is sensible only in the limit of perfect priors that are equivalent to knowing the label
 
-    rewire_edge_index = get_cayley_clusters_rewiring(
-        k_means_colours,
-        allowable_idx=torch.tensor(range(graph.num_nodes)),
-        num_colours=num_classes,
-    )
+    # rewire_edge_index = get_cayley_clusters_rewiring(
+    #     graph.y.squeeze(),
+    #     allowable_idx=torch.tensor(range(graph.num_nodes)),
+    #     num_colours=num_classes,
+    # )
 
-    with open("../data/arxiv-rewirings/arxiv_rewire_by_kmeans_all", "wb") as f:
-        pickle.dump(rewire_edge_index, f)
+    # with open("../data/arxiv-rewirings/arxiv_rewire_by_class_all", "wb") as f:
+    #     pickle.dump(rewire_edge_index, f)
 
-    check_valid(
-        rewire_edge_index, k_means_colours, torch.tensor(range(graph.num_nodes))
-    )
+    # check_valid(
+    #     rewire_edge_index, graph.y.squeeze(), torch.tensor(range(graph.num_nodes))
+    # )
 
-    # ------------------------------
+    # # ------------------------------
 
-    one_hot_train = F.one_hot(graph.y.squeeze()[train_idx]).float()
-    avg_class = torch.mean(one_hot_train, dim=0)
+    # normalized_features = graph.x / torch.norm(graph.x, p=2, dim=1, keepdim=True)
 
-    enriched_features = torch.zeros((graph.x.shape[0], graph.x.shape[1]+40))
+    # k_means_colours = get_colours_from_kmeans(normalized_features.numpy(), num_classes)
 
-    enriched_features[train_idx] = torch.cat((graph.x[train_idx], one_hot_train), dim=1)
-    enriched_features[valid_idx] = torch.cat((graph.x[valid_idx], avg_class.repeat(len(valid_idx), 1)), dim=1)
-    enriched_features[test_idx] = torch.cat((graph.x[test_idx], avg_class.repeat(len(test_idx), 1)), dim=1)
+    # assert k_means_colours.size(0) == graph.num_nodes
 
-    normalized_enriched_features = enriched_features / torch.norm(enriched_features, p=2, dim=1, keepdim=True)
+    # rewire_edge_index = get_cayley_clusters_rewiring(
+    #     k_means_colours,
+    #     allowable_idx=torch.tensor(range(graph.num_nodes)),
+    #     num_colours=num_classes,
+    # )
 
-    k_means_colours = get_colours_from_kmeans(normalized_enriched_features.numpy(), num_classes)
+    # with open("../data/arxiv-rewirings/arxiv_rewire_by_kmeans_all", "wb") as f:
+    #     pickle.dump(rewire_edge_index, f)
 
-    assert k_means_colours.size(0) == graph.num_nodes
+    # check_valid(
+    #     rewire_edge_index, k_means_colours, torch.tensor(range(graph.num_nodes))
+    # )
 
-    rewire_edge_index = get_cayley_clusters_rewiring(
-        k_means_colours,
-        allowable_idx=torch.tensor(range(graph.num_nodes)),
-        num_colours=num_classes,
-    )
+    # # ------------------------------
 
-    with open("../data/arxiv-rewirings/arxiv_rewire_by_enriched-kmeans_all", "wb") as f:
-        pickle.dump(rewire_edge_index, f)
+    # one_hot_train = F.one_hot(graph.y.squeeze()[train_idx]).float()
+    # avg_class = torch.mean(one_hot_train, dim=0)
 
-    check_valid(
-        rewire_edge_index, k_means_colours, torch.tensor(range(graph.num_nodes))
-    )
+    # enriched_features = torch.zeros((graph.x.shape[0], graph.x.shape[1]+40))
 
-    # ------------------------------
+    # enriched_features[train_idx] = torch.cat((graph.x[train_idx], one_hot_train), dim=1)
+    # enriched_features[valid_idx] = torch.cat((graph.x[valid_idx], avg_class.repeat(len(valid_idx), 1)), dim=1)
+    # enriched_features[test_idx] = torch.cat((graph.x[test_idx], avg_class.repeat(len(test_idx), 1)), dim=1)
 
-    mlp_colours = get_colours_from_mlp(graph.x)
+    # normalized_enriched_features = enriched_features / torch.norm(enriched_features, p=2, dim=1, keepdim=True)
 
-    assert mlp_colours.size(0) == graph.num_nodes
+    # k_means_colours = get_colours_from_kmeans(normalized_enriched_features.numpy(), num_classes)
 
-    rewire_edge_index = get_cayley_clusters_rewiring(
-        mlp_colours,
-        allowable_idx=torch.tensor(range(graph.num_nodes)),
-        num_colours=num_classes,
-    )
+    # assert k_means_colours.size(0) == graph.num_nodes
 
-    with open("../data/arxiv-rewirings/arxiv_rewire_by_mlp_all", "wb") as f:
-        pickle.dump(rewire_edge_index, f)
+    # rewire_edge_index = get_cayley_clusters_rewiring(
+    #     k_means_colours,
+    #     allowable_idx=torch.tensor(range(graph.num_nodes)),
+    #     num_colours=num_classes,
+    # )
 
-    check_valid(rewire_edge_index, mlp_colours, torch.tensor(range(graph.num_nodes)))
+    # with open("../data/arxiv-rewirings/arxiv_rewire_by_enriched-kmeans_all", "wb") as f:
+    #     pickle.dump(rewire_edge_index, f)
 
-    # ------------------------------
+    # check_valid(
+    #     rewire_edge_index, k_means_colours, torch.tensor(range(graph.num_nodes))
+    # )
 
-    mlp_colours = get_colours_from_mlp_feats(graph.x)
+    # # ------------------------------
 
-    assert mlp_colours.size(0) == graph.num_nodes
+    # mlp_colours = get_colours_from_mlp(graph.x)
 
-    rewire_edge_index = get_cayley_clusters_rewiring(
-        mlp_colours,
-        allowable_idx=torch.tensor(range(graph.num_nodes)),
-        num_colours=num_classes,
-    )
+    # assert mlp_colours.size(0) == graph.num_nodes
 
-    with open("../data/arxiv-rewirings/arxiv_rewire_by_mlp_feats_all", "wb") as f:
-        pickle.dump(rewire_edge_index, f)
+    # rewire_edge_index = get_cayley_clusters_rewiring(
+    #     mlp_colours,
+    #     allowable_idx=torch.tensor(range(graph.num_nodes)),
+    #     num_colours=num_classes,
+    # )
 
-    check_valid(rewire_edge_index, mlp_colours, torch.tensor(range(graph.num_nodes)))
+    # with open("../data/arxiv-rewirings/arxiv_rewire_by_mlp_all", "wb") as f:
+    #     pickle.dump(rewire_edge_index, f)
+
+    # check_valid(rewire_edge_index, mlp_colours, torch.tensor(range(graph.num_nodes)))
+
+    # # ------------------------------
+
+    # mlp_colours = get_colours_from_mlp_feats(graph.x)
+
+    # assert mlp_colours.size(0) == graph.num_nodes
+
+    # rewire_edge_index = get_cayley_clusters_rewiring(
+    #     mlp_colours,
+    #     allowable_idx=torch.tensor(range(graph.num_nodes)),
+    #     num_colours=num_classes,
+    # )
+
+    # with open("../data/arxiv-rewirings/arxiv_rewire_by_mlp_feats_all", "wb") as f:
+    #     pickle.dump(rewire_edge_index, f)
+
+    # check_valid(rewire_edge_index, mlp_colours, torch.tensor(range(graph.num_nodes)))
 
 
 if __name__ == "__main__":

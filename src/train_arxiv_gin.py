@@ -15,6 +15,7 @@ import wandb
 from gin import GINModel
 from train_synthetic import count_parameters, set_seed
 
+import torch.nn.functional as F
 
 def get_ogbn_arxiv():
     """
@@ -265,6 +266,10 @@ def get_rewire_edge_index(rewirer: str):
         fn = "arxiv_rewire_by_mlp_feats_all"
     elif rewirer == "enriched-kmeans_all":
         fn = "arxiv_rewire_by_enriched-kmeans_all"
+    elif rewirer == "corrupted_class_all":
+        fn = "arxiv_rewire_by_corrupted_class_all"
+    elif rewirer == "corrupted_0_5_class_all":
+        fn = "arxiv_rewire_by_corrupted_0_5_class_all"
     else:
         raise NotImplementedError
 
@@ -278,19 +283,39 @@ def get_rewire_edge_index(rewirer: str):
 
 def main(config):
 
+    pprint(config)
+
     # set device
     # -------------------------------
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using {device}")
 
-    # load dataset
+    # load corrupted dataset
     # -------------------------------
-    graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
+    # graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
+
+    with open("../data/ogbn_arxiv/corrupted_0_5_data.pkl", "rb") as f:
+        save_dict = pickle.load(f)
+
+    graph, train_idx, valid_idx, test_idx, num_classes, corrupted_y = (
+        save_dict["graph"],
+        save_dict["train_idx"],
+        save_dict["valid_idx"],
+        save_dict["test_idx"],
+        save_dict["num_classes"],
+        save_dict["corrupted_y"],
+    )
+
     config.model.in_channels = graph.x.size(1)
     config.model.out_channels = num_classes
 
-    pprint(config)
 
+    if config.model.rewirer is None:
+        print("Adding one-hot corrupted labels to features")
+        one_hot_corrupted = F.one_hot(corrupted_y.squeeze(), num_classes=40).float()
+        graph.x = torch.cat([graph.x, one_hot_corrupted], dim=1)
+        print("New feature shape", graph.x.shape)
+    
     # attach the rewirer
     # -------------------------------
     if config.model.rewirer is not None:
@@ -302,7 +327,7 @@ def main(config):
     set_seed(config.model.seed)
 
     model = GINModel(
-        in_channels=config.model.in_channels,
+        in_channels=graph.x.shape[1],
         hidden_channels=config.model.hidden_channels,
         num_layers=config.model.num_layers,
         out_channels=config.model.out_channels,
@@ -330,7 +355,7 @@ def main(config):
             config=config,
             group=f"rewirer-{config.model.rewirer}-{config.model.approach}",
         )
-        wandb.run.name = f"rewirer-{config.model.rewirer}-{config.model.approach}-seed-{config.model.seed}"
+        wandb.run.name = f"corrupt-prob-0.5-rewirer-{config.model.rewirer}-{config.model.approach}-seed-{config.model.seed}"
 
     end_results = train_eval_loop(
         model,
@@ -446,3 +471,5 @@ if __name__ == "__main__":
 #     # the allowable indices are in train_idx only!
 #     rewire_edge_index = get_rewire_edge_index(rewirer="by_class_train_only")
 #     check_valid(rewire_edge_index, graph.y.squeeze(), train_idx)
+
+# %%
