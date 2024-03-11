@@ -5,6 +5,8 @@ import networkx as nx
 import numpy as np
 import torch
 from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_samples, silhouette_score
+
 from sklearn.decomposition import PCA
 from tqdm import tqdm
 
@@ -103,6 +105,29 @@ def check_valid(rewire_edge_index, colours, allowable_idx):
 
     print("Passed basic checks!")
 
+def get_colours_from_kmeans_adaptive(feats):
+
+    for n_clusters in range(2, 40):
+
+        print(f"n_clusters = {n_clusters}")
+
+        clusterer = KMeans(n_clusters=n_clusters, random_state=10, verbose=True)
+        cluster_labels = clusterer.fit_predict(feats)
+
+        # The silhouette_score gives the average value for all the samples.
+        # This gives a perspective into the density and separation of the formed
+        # clusters
+
+        silhouette_avg = silhouette_score(feats, cluster_labels)
+        print(
+            "For n_clusters =",
+            n_clusters,
+            "The average silhouette_score is :",
+            silhouette_avg
+        )
+
+    exit()
+
 
 def get_colours_from_kmeans(feats, num_classes):
 
@@ -154,45 +179,45 @@ def main():
 
     graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
     
-    num_nodes = graph.y.shape[0]
-    proportion_corrupted = 0.5
-    num_corrupted = int(num_nodes * proportion_corrupted)
+    # num_nodes = graph.y.shape[0]
+    # proportion_corrupted = 0.5
+    # num_corrupted = int(num_nodes * proportion_corrupted)
 
-    boolean_list = [1] * num_corrupted + [0] * (num_nodes - num_corrupted)
-    random.shuffle(boolean_list)
-    boolean_list = torch.tensor(boolean_list, dtype=torch.bool)
+    # boolean_list = [1] * num_corrupted + [0] * (num_nodes - num_corrupted)
+    # random.shuffle(boolean_list)
+    # boolean_list = torch.tensor(boolean_list, dtype=torch.bool)
 
-    corrupted_values = torch.randint(0, num_classes, (num_corrupted,))
+    # corrupted_values = torch.randint(0, num_classes, (num_corrupted,))
 
-    corrupted_y = graph.y.squeeze().detach().clone()
-    corrupted_y[boolean_list] = corrupted_values
+    # corrupted_y = graph.y.squeeze().detach().clone()
+    # corrupted_y[boolean_list] = corrupted_values
 
-    print(sum(corrupted_y == graph.y.squeeze()) / num_nodes)
+    # print(sum(corrupted_y == graph.y.squeeze()) / num_nodes)
 
-    rewire_edge_index = get_cayley_clusters_rewiring(
-        corrupted_y,
-        allowable_idx=torch.tensor(range(graph.num_nodes)),
-        num_colours=num_classes,
-    )
+    # rewire_edge_index = get_cayley_clusters_rewiring(
+    #     corrupted_y,
+    #     allowable_idx=torch.tensor(range(graph.num_nodes)),
+    #     num_colours=num_classes,
+    # )
 
-    with open("../data/arxiv-rewirings/arxiv_rewire_by_corrupted_0_5_class_all", "wb") as f:
-        pickle.dump(rewire_edge_index, f)
+    # with open("../data/arxiv-rewirings/arxiv_rewire_by_corrupted_0_5_class_all", "wb") as f:
+    #     pickle.dump(rewire_edge_index, f)
 
-    check_valid(
-        rewire_edge_index, corrupted_y, torch.tensor(range(graph.num_nodes))
-    )
+    # check_valid(
+    #     rewire_edge_index, corrupted_y, torch.tensor(range(graph.num_nodes))
+    # )
 
-    save_dict = {
-        "graph": graph,
-        "train_idx": train_idx,
-        "valid_idx": valid_idx,
-        "test_idx": test_idx,
-        "num_classes": num_classes,
-        "corrupted_y": corrupted_y.unsqueeze(1),
-    }
+    # save_dict = {
+    #     "graph": graph,
+    #     "train_idx": train_idx,
+    #     "valid_idx": valid_idx,
+    #     "test_idx": test_idx,
+    #     "num_classes": num_classes,
+    #     "corrupted_y": corrupted_y.unsqueeze(1),
+    # }
 
-    with open("../data/ogbn_arxiv/corrupted_0_5_data.pkl", "wb") as f:
-        pickle.dump(save_dict, f)
+    # with open("../data/ogbn_arxiv/corrupted_0_5_data.pkl", "wb") as f:
+    #     pickle.dump(save_dict, f)
 
     # ------------------------------
     # Cayley clusters rewire edge index on all nodes, irrespective of split
@@ -232,7 +257,7 @@ def main():
     #     rewire_edge_index, graph.y.squeeze(), torch.tensor(range(graph.num_nodes))
     # )
 
-    # # ------------------------------
+    # # # ------------------------------
 
     # normalized_features = graph.x / torch.norm(graph.x, p=2, dim=1, keepdim=True)
 
@@ -252,6 +277,27 @@ def main():
     # check_valid(
     #     rewire_edge_index, k_means_colours, torch.tensor(range(graph.num_nodes))
     # )
+
+    # # ------------------------------
+
+    normalized_features = graph.x / torch.norm(graph.x, p=2, dim=1, keepdim=True)
+
+    k_means_colours = get_colours_from_kmeans_adaptive(normalized_features.numpy())
+
+    assert k_means_colours.size(0) == graph.num_nodes
+
+    rewire_edge_index = get_cayley_clusters_rewiring(
+        k_means_colours,
+        allowable_idx=torch.tensor(range(graph.num_nodes)),
+        num_colours=num_classes,
+    )
+
+    with open("../data/arxiv-rewirings/arxiv_rewire_by_kmeans_all", "wb") as f:
+        pickle.dump(rewire_edge_index, f)
+
+    check_valid(
+        rewire_edge_index, k_means_colours, torch.tensor(range(graph.num_nodes))
+    )
 
     # # ------------------------------
 
