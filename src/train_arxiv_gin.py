@@ -2,6 +2,7 @@ import argparse
 import pickle
 from pathlib import Path
 from pprint import pprint
+import pathlib
 
 import torch
 import yaml
@@ -20,7 +21,8 @@ def get_ogbn_arxiv():
     see data description at https://ogb.stanford.edu/docs/nodeprop/#ogbn-arxiv
     """
 
-    dataset = PygNodePropPredDataset(name="ogbn-arxiv", root="../data/")
+    path_root = pathlib.Path(__file__).parent.resolve() / ".."
+    dataset = PygNodePropPredDataset(name="ogbn-arxiv", root=path_root / "data")
 
     NUM_CLASSES = 40
 
@@ -250,7 +252,8 @@ def get_rewire_edge_index(rewirer: str):
     these are various ways to instantiate Cayley clusters on this dataset
     """
 
-    base_rewire_dir = Path("../data/arxiv-rewirings")
+    path_root = pathlib.Path(__file__).parent.resolve() / ".."
+    base_rewire_dir = path_root / "data/arxiv-rewirings"
 
     if rewirer == "class_all":
         fn = "arxiv_rewire_by_class_all"
