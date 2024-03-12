@@ -1,5 +1,3 @@
-# %%
-
 import argparse
 import pickle
 from pathlib import Path
@@ -266,6 +264,10 @@ def get_rewire_edge_index(rewirer: str):
         fn = "arxiv_rewire_by_mlp_feats_all"
     elif rewirer == "enriched-kmeans_all":
         fn = "arxiv_rewire_by_enriched-kmeans_all"
+    elif rewirer == "knn":
+        fn = "arxiv_rewire_by_knn"
+    elif rewirer == "knn_mlp_feats":
+        fn = "arxiv_rewire_by_knn_mlp_feats"
     elif rewirer == "corrupted_class_all":
         fn = "arxiv_rewire_by_corrupted_class_all"
     elif rewirer == "corrupted_0_5_class_all":
@@ -290,27 +292,29 @@ def main(config):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using {device}")
 
-    # load corrupted dataset
+    # load dataset
     # -------------------------------
-    # graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
+    graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
 
-    with open("../data/ogbn_arxiv/corrupted_0_5_data.pkl", "rb") as f:
-        save_dict = pickle.load(f)
+    if config.model.rewirer is not None and "corrupt" in config.model.rewirer:
 
-    graph, train_idx, valid_idx, test_idx, num_classes, corrupted_y = (
-        save_dict["graph"],
-        save_dict["train_idx"],
-        save_dict["valid_idx"],
-        save_dict["test_idx"],
-        save_dict["num_classes"],
-        save_dict["corrupted_y"],
-    )
+        with open("../data/ogbn_arxiv/corrupted_0_5_data.pkl", "rb") as f:
+            save_dict = pickle.load(f)
+
+        graph, train_idx, valid_idx, test_idx, num_classes, corrupted_y = (
+            save_dict["graph"],
+            save_dict["train_idx"],
+            save_dict["valid_idx"],
+            save_dict["test_idx"],
+            save_dict["num_classes"],
+            save_dict["corrupted_y"],
+        )
 
     config.model.in_channels = graph.x.size(1)
     config.model.out_channels = num_classes
 
 
-    if config.model.rewirer is None:
+    if config.model.rewirer is not None and "corrupt" in config.model.rewirer:
         print("Adding one-hot corrupted labels to features")
         one_hot_corrupted = F.one_hot(corrupted_y.squeeze(), num_classes=40).float()
         graph.x = torch.cat([graph.x, one_hot_corrupted], dim=1)
@@ -355,7 +359,7 @@ def main(config):
             config=config,
             group=f"rewirer-{config.model.rewirer}-{config.model.approach}",
         )
-        wandb.run.name = f"corrupt-prob-0.5-rewirer-{config.model.rewirer}-{config.model.approach}-seed-{config.model.seed}"
+        wandb.run.name = f"-{config.model.rewirer}-{config.model.approach}-seed-{config.model.seed}"
 
     end_results = train_eval_loop(
         model,
