@@ -255,7 +255,9 @@ def get_rewire_edge_index(rewirer: str):
     path_root = pathlib.Path(__file__).parent.resolve() / ".."
     base_rewire_dir = path_root / "data/arxiv-rewirings"
 
-    if rewirer == "class_all":
+    if rewirer == "cayley":
+        fn = "arxiv_rewire_by_cayley"
+    elif rewirer == "class_all":
         fn = "arxiv_rewire_by_class_all"
     elif rewirer == "class_train_only":
         fn = "arxiv_rewire_by_class_train_only"
@@ -263,6 +265,8 @@ def get_rewire_edge_index(rewirer: str):
         fn = "arxiv_rewire_by_kmeans_all"
     elif rewirer == "mlp_all":
         fn = "arxiv_rewire_by_mlp_all"
+    elif rewirer == "mlp_cs_all":
+        fn = "arxiv_rewire_by_mlp_cs_all"
     elif rewirer == "mlp_feats_all":
         fn = "arxiv_rewire_by_mlp_feats_all"
     elif rewirer == "enriched-kmeans_all":

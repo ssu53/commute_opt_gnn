@@ -6,7 +6,7 @@ model:
   hidden_channels: 128
   num_layers: 3
   drop_prob: 0.5
-  rewirers: ["class_train_only", "class_all", "mlp_all", "knn", "knn_mlp_feats"]
+  rewirers: ["class_train_only", "class_all", "cayley", "mlp_cs_all", "mlp_all", "knn", "knn_mlp_feats"]
   approaches: ["only_original", "interleave"]
   norm: 'bn'
   seed: 42

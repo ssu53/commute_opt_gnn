@@ -1,5 +1,6 @@
 import pickle
-
+import time
+import argparse
 import einops
 import networkx as nx
 import numpy as np
@@ -16,6 +17,8 @@ from train_arxiv_gin import get_ogbn_arxiv
 from train_arxiv_mlp import MLP
 
 import torch.nn.functional as F
+from torch_geometric.nn import CorrectAndSmooth
+from torch_geometric.utils.convert import from_networkx
 
 import random
 
@@ -162,6 +165,74 @@ def get_colours_from_mlp(feats, device="cpu"):
 
     return out.argmax(dim=-1, keepdim=False)
 
+
+@torch.no_grad()
+def get_colours_from_mlp_cs(
+    graph,
+    train_idx,
+    valid_idx,
+    device="cpu",
+    num_correction_layers = 10,
+    correction_alpha = 0.8,
+    num_smoothing_layers = 10,
+    smoothing_alpha = 0.8,
+    autoscale = True,
+    scale = None,
+    ):
+    """
+    with correct and smooth
+    """
+
+    feats = graph.x
+    y_all = graph.y.squeeze()
+    y_train = graph.y[train_idx]
+
+    model = MLP(
+        feats.size(-1), hidden_channels=256, out_channels=40, num_layers=3, dropout=0.5
+    ).to(device)
+
+    model.load_state_dict(
+        torch.load(
+            "../data/models/ogbn-arxiv-mlp-model.pth", map_location=torch.device("cpu")
+        )
+    )
+
+    out = model(feats)
+    y_soft = out.softmax(dim=-1)
+
+    print("Before post-processing")
+    preds = y_soft.argmax(dim=-1)
+    print(f"train acc: {(preds[train_idx]  == y_all[train_idx]).sum() / train_idx.size(0)}")
+    print(f"val acc: {(preds[valid_idx]  == y_all[valid_idx]).sum() / valid_idx.size(0)}")
+
+
+    print(f"{num_correction_layers=} {correction_alpha=} {num_smoothing_layers=} {smoothing_alpha=} {autoscale=} {scale=}")
+
+    print("Initialising CorrectAndSmooth processor")
+    cs_processor = CorrectAndSmooth(
+        num_correction_layers = num_correction_layers,
+        correction_alpha = correction_alpha,
+        num_smoothing_layers = num_smoothing_layers,
+        smoothing_alpha = smoothing_alpha,
+        autoscale = True,
+        scale = None,
+    )
+
+    print("Correcting...")
+    y_soft = cs_processor.correct(y_soft, y_train, train_idx, graph.edge_index)
+    print("Smoothing...")
+    y_soft = cs_processor.smooth(y_soft, y_train, train_idx, graph.edge_index)
+
+
+    print("After correct and smooth")
+    preds = y_soft.argmax(dim=-1)
+    print(f"train acc: {(preds[train_idx]  == y_all[train_idx]).sum() / train_idx.size(0)}")
+    print(f"val acc: {(preds[valid_idx]  == y_all[valid_idx]).sum() / valid_idx.size(0)}")
+
+    return preds
+
+
+
 @torch.no_grad()
 def get_colours_from_mlp_feats(feats, device="cpu"):
 
@@ -206,7 +277,17 @@ def get_colours_from_knn(X, y, train_idx, valid_idx, test_idx, n_neighbs=10, pca
 
 def main():
 
-    assign_colours_by = "mlp_all"
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--assign_colours_by",
+        default="mlp_cs_all",
+        help="Method for assigning colours for Cayley clusters",
+        type=str,
+    )
+    args = parser.parse_args()
+
+    assign_colours_by = args.assign_colours_by
+    print(f"Computing rewiring according to: {assign_colours_by}")
 
     graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
     
@@ -250,7 +331,42 @@ def main():
     # with open("../data/ogbn_arxiv/corrupted_0_5_data.pkl", "wb") as f:
     #     pickle.dump(save_dict, f)
 
+    if assign_colours_by == "none":
+        # with no colur assignments, construct Cayley expander over entire graph
+        # this is agnostic to graph features and labels
+
+        num_nodes = graph.num_nodes
+
+        if num_nodes < 2:
+            raise ValueError(
+                "Cayley graph requires at least 2 nodes, but got only {}.".format(
+                    num_nodes
+                )
+            )
+
+        time_start = time.time()
+        print("Instantiating CayleyGraphGenerator")
+        cg_gen = CayleyGraphGenerator(num_nodes)
+        print("Generating...")
+        cg_gen.generate_cayley_graph()
+        print("Trimming...")
+        cg_gen.trim_graph()
+        print("Done!")
+        time_end = time.time()
+        print(f"Time elapsed {time_end-time_start:.3f} s")
+
+        rewired_graph = nx.relabel_nodes(
+            cg_gen.G_trimmed, dict(zip(cg_gen.G_trimmed, range(num_nodes)))
+        )
+
+        rewire_edge_index = from_networkx(rewired_graph).edge_index
+
+        with open("../data/arxiv-rewirings/arxiv_rewire_by_cayley", "wb") as f:
+            pickle.dump(rewire_edge_index, f)
+        
+        return
     
+            
     if assign_colours_by == "by_class_train":
         # Cayley clusters rewire edge index on only the train nodes
         # prevent leakage from val and test set labels into train
@@ -265,6 +381,8 @@ def main():
             pickle.dump(rewire_edge_index, f)
 
         check_valid(rewire_edge_index, graph.y.squeeze(), train_idx)
+
+        return
 
 
     if assign_colours_by == "by_class_all":
@@ -283,7 +401,8 @@ def main():
         check_valid(
             rewire_edge_index, graph.y.squeeze(), torch.tensor(range(graph.num_nodes))
         )
-    
+
+        return
     
     if assign_colours_by == "by_kmeans_all":
 
@@ -307,6 +426,7 @@ def main():
             rewire_edge_index, k_means_colours, torch.tensor(range(graph.num_nodes))
         )
 
+        return
 
     if assign_colours_by == "enriched-kmeans":
 
@@ -338,6 +458,8 @@ def main():
             rewire_edge_index, k_means_colours, torch.tensor(range(graph.num_nodes))
         )
 
+        return
+
     
     if assign_colours_by == "mlp_all":
 
@@ -356,6 +478,26 @@ def main():
 
         check_valid(rewire_edge_index, mlp_colours, torch.tensor(range(graph.num_nodes)))
 
+        return
+
+    if assign_colours_by == "mlp_cs_all":
+
+        mlp_colours = get_colours_from_mlp_cs(graph, train_idx, valid_idx)
+
+        assert mlp_colours.size(0) == graph.num_nodes
+
+        rewire_edge_index = get_cayley_clusters_rewiring(
+            mlp_colours,
+            allowable_idx=torch.tensor(range(graph.num_nodes)),
+            num_colours=num_classes,
+        )
+
+        with open("../data/arxiv-rewirings/arxiv_rewire_by_mlp_cs_all", "wb") as f:
+            pickle.dump(rewire_edge_index, f)
+
+        check_valid(rewire_edge_index, mlp_colours, torch.tensor(range(graph.num_nodes)))
+
+        return
     
     if assign_colours_by == "mlp_feats_all":
 
@@ -373,6 +515,8 @@ def main():
             pickle.dump(rewire_edge_index, f)
 
         check_valid(rewire_edge_index, mlp_colours, torch.tensor(range(graph.num_nodes)))
+
+        return
     
         
     if assign_colours_by == "knn":
@@ -402,6 +546,8 @@ def main():
         check_valid(
             rewire_edge_index, colours, torch.tensor(range(graph.num_nodes))
         )
+        
+        return
     
     if assign_colours_by == "knn_mlp_feats":
 
@@ -443,6 +589,9 @@ def main():
             rewire_edge_index, colours, torch.tensor(range(graph.num_nodes))
         )
 
+        return
+
+    raise NotImplementedError
         
 
 if __name__ == "__main__":
