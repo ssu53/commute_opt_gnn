@@ -3,6 +3,7 @@ from itertools import product
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+from scipy.sparse import lil_matrix
 
 
 class CayleyGraphGenerator:
@@ -68,7 +69,8 @@ class CayleyGraphGenerator:
         else:
             elements = self.get_group_elements()
 
-            self.adj_matrix = np.zeros((len(elements), len(elements)), dtype=int)
+            # self.adj_matrix = np.zeros((len(elements), len(elements)), dtype=int)
+            self.adj_matrix = lil_matrix((len(elements), len(elements)), dtype=int)
 
             element_to_index = {
                 self.matrix_to_tuple(element): idx for idx, element in enumerate(elements)
@@ -103,14 +105,22 @@ class CayleyGraphGenerator:
         """
         Creates a NetworkX graph from an adjacency matrix
         """
-        self.G = nx.Graph()
+        
+        self.G = nx.Graph(self.adj_matrix)
 
-        num_nodes = self.adj_matrix.shape[0]
-        self.G.add_nodes_from(range(num_nodes))
-        for i in range(num_nodes):
-            for j in range(num_nodes):
-                if self.adj_matrix[i, j] == 1:
-                    self.G.add_edge(i, j)
+        
+        # self.G_ = nx.Graph()
+
+        # num_nodes = self.adj_matrix.shape[0]
+        # self.G_.add_nodes_from(range(num_nodes))
+        # for i in range(num_nodes):
+        #     for j in range(num_nodes):
+        #         if self.adj_matrix[i, j] == 1:
+        #             self.G_.add_edge(i, j, weight=1)
+        
+        # from networkx.utils import graphs_equal
+        # assert graphs_equal(self.G, self.G_)
+
 
         assert (
             self.G.number_of_nodes() >= self.V
