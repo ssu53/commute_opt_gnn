@@ -73,7 +73,8 @@ class CayleyGraphGenerator:
             self.adj_matrix = lil_matrix((len(elements), len(elements)), dtype=int)
 
             element_to_index = {
-                self.matrix_to_tuple(element): idx for idx, element in enumerate(elements)
+                self.matrix_to_tuple(element): idx
+                for idx, element in enumerate(elements)
             }
 
             for i, u in enumerate(elements):
@@ -105,10 +106,9 @@ class CayleyGraphGenerator:
         """
         Creates a NetworkX graph from an adjacency matrix
         """
-        
+
         self.G = nx.Graph(self.adj_matrix)
 
-        
         # self.G_ = nx.Graph()
 
         # num_nodes = self.adj_matrix.shape[0]
@@ -117,10 +117,9 @@ class CayleyGraphGenerator:
         #     for j in range(num_nodes):
         #         if self.adj_matrix[i, j] == 1:
         #             self.G_.add_edge(i, j, weight=1)
-        
+
         # from networkx.utils import graphs_equal
         # assert graphs_equal(self.G, self.G_)
-
 
         assert (
             self.G.number_of_nodes() >= self.V
@@ -141,7 +140,9 @@ class CayleyGraphGenerator:
         try:
             bfs_nodes = list(nx.bfs_edges(self.G, source=0))
         except:
-            raise Exception(f"Could not perform BFS starting at 0 on graph with nodes {self.G.nodes}")
+            raise Exception(
+                f"Could not perform BFS starting at 0 on graph with nodes {self.G.nodes}"
+            )
 
         visited_nodes = {0}
         for u, v in bfs_nodes:

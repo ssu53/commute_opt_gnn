@@ -1,20 +1,18 @@
 import argparse
-import pickle
-from pathlib import Path
-from pprint import pprint
 import pathlib
+import pickle
+from pprint import pprint
 
 import torch
+import torch.nn.functional as F
+import wandb
 import yaml
 from easydict import EasyDict
+from gin import GINModel
 from ogb.nodeproppred import PygNodePropPredDataset
 from tqdm import tqdm
-
-import wandb
-from gin import GINModel
 from train_synthetic import count_parameters, set_seed
 
-import torch.nn.functional as F
 
 def get_ogbn_arxiv():
     """
@@ -39,9 +37,11 @@ def get_ogbn_arxiv():
     assert torch.min(graph.y).item() == 0
     assert torch.max(graph.y).item() == NUM_CLASSES - 1
 
-    print(f"train frac {len(train_idx) / graph.num_nodes : .3f}")
-    print(f"valid frac {len(valid_idx) / graph.num_nodes : .3f}")
-    print(f"test frac {len(test_idx) / graph.num_nodes : .3f}")
+    # print(f"train frac {len(train_idx) / graph.num_nodes : .3f}")
+    # print(f"valid frac {len(valid_idx) / graph.num_nodes : .3f}")
+    # print(f"test frac {len(test_idx) / graph.num_nodes : .3f}")
+
+    # may change based on args.proportion_train_samples
 
     return graph, train_idx, valid_idx, test_idx, NUM_CLASSES
 
@@ -161,9 +161,7 @@ def train_eval_loop(
 
     print("Whole batch gradient descent on one graph...")
 
-    with tqdm(
-        range(1, num_epochs + 1), unit="e", disable=not verbose
-    ) as tepoch:
+    with tqdm(range(1, num_epochs + 1), unit="e", disable=not verbose) as tepoch:
         # with tqdm(range(1,num_epochs+1), unit="e", disable=not verbose) as tepoch:
         for epoch in tepoch:
 
@@ -259,6 +257,8 @@ def get_rewire_edge_index(rewirer: str):
         fn = "arxiv_rewire_by_cayley"
     elif rewirer == "class_all":
         fn = "arxiv_rewire_by_class_all"
+    elif rewirer == "class_all_fully_connected_clusters":
+        fn = "arxiv_rewire_by_class_all_fully_connected_clusters"
     elif rewirer == "class_train_only":
         fn = "arxiv_rewire_by_class_train_only"
     elif rewirer == "kmeans_all":
@@ -275,10 +275,6 @@ def get_rewire_edge_index(rewirer: str):
         fn = "arxiv_rewire_by_knn"
     elif rewirer == "knn_mlp_feats":
         fn = "arxiv_rewire_by_knn_mlp_feats"
-    elif rewirer == "corrupted_class_all":
-        fn = "arxiv_rewire_by_corrupted_class_all"
-    elif rewirer == "corrupted_0_5_class_all":
-        fn = "arxiv_rewire_by_corrupted_0_5_class_all"
     else:
         raise NotImplementedError
 
@@ -286,6 +282,8 @@ def get_rewire_edge_index(rewirer: str):
 
     with open(base_rewire_dir / fn, "rb") as f:
         rewire_edge_index = pickle.load(f)
+
+    print("Opened")
 
     return rewire_edge_index
 
@@ -303,30 +301,14 @@ def main(config):
     # -------------------------------
     graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
 
-    if config.model.rewirer is not None and "corrupt" in config.model.rewirer:
-
-        with open("../data/ogbn_arxiv/corrupted_0_5_data.pkl", "rb") as f:
-            save_dict = pickle.load(f)
-
-        graph, train_idx, valid_idx, test_idx, num_classes, corrupted_y = (
-            save_dict["graph"],
-            save_dict["train_idx"],
-            save_dict["valid_idx"],
-            save_dict["test_idx"],
-            save_dict["num_classes"],
-            save_dict["corrupted_y"],
-        )
+    print("Reducing number of train samples by ", args.proportion_train_samples, "x")
+    num_train_samples = int(len(train_idx) * args.proportion_train_samples)
+    permuted_indices = torch.randperm(len(train_idx))[:num_train_samples]
+    train_idx = train_idx[permuted_indices]
 
     config.model.in_channels = graph.x.size(1)
     config.model.out_channels = num_classes
 
-
-    if config.model.rewirer is not None and "corrupt" in config.model.rewirer:
-        print("Adding one-hot corrupted labels to features")
-        one_hot_corrupted = F.one_hot(corrupted_y.squeeze(), num_classes=40).float()
-        graph.x = torch.cat([graph.x, one_hot_corrupted], dim=1)
-        print("New feature shape", graph.x.shape)
-    
     # attach the rewirer
     # -------------------------------
     if config.model.rewirer is not None:
@@ -364,9 +346,9 @@ def main(config):
             project=config.wandb.project,
             entity=config.wandb.entity,
             config=config,
-            group=f"rewirer-{config.model.rewirer}-{config.model.approach}",
+            group=f"{args.proportion_train_samples}-rewirer-{config.model.rewirer}-{config.model.approach}",
         )
-        wandb.run.name = f"-{config.model.rewirer}-{config.model.approach}-seed-{config.model.seed}"
+        wandb.run.name = f"{args.proportion_train_samples}-{config.model.rewirer}-{config.model.approach}-seed-{config.model.seed}"
 
     end_results = train_eval_loop(
         model,
@@ -387,9 +369,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--config_fn",
-        default="../configs/debug_ogbn-arxiv.yaml",
+        default="../configs/ogbn-arxiv.yaml",
         help="configuration file name",
         type=str,
+    )
+    parser.add_argument(
+        "--proportion_train_samples",
+        default=1.0,
+        help="proportion of training samples to use",
+        type=float,
     )
 
     args = parser.parse_args()
@@ -397,90 +385,15 @@ if __name__ == "__main__":
     with open(args.config_fn, "r") as f:
         config = EasyDict(yaml.safe_load(f))
 
-    for approach in config.model.approaches:
-        if approach == "only_original":
-            rewirers = [None]
-        else:
-            rewirers = config.model.rewirers
-        for rewirer in rewirers:
-            config.model.rewirer = rewirer
-            config.model.approach = approach
-            main(config)
-    
-
-# def exploratory_stuff_to_clean_up():
-
-#     graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
-
-#     import matplotlib.pyplot as plt
-#     from sklearn.cluster import KMeans
-#     from sklearn.decomposition import PCA
-
-#     features = graph.x[train_idx]
-
-#     num_clusters = 10
-#     kmeans_model = KMeans(num_clusters, random_state=0, n_init="auto").fit(features)
-#     cluster_labels = kmeans_model.predict(features)
-
-#     pca_model = PCA(n_components=2)  # visualise in 2D
-#     features_pca = pca_model.fit_transform(features)
-
-#     plt.figure()
-#     for i in range(num_clusters):
-#         plt.scatter(
-#             features_pca[cluster_labels == i, 0],
-#             features_pca[cluster_labels == i, 1],
-#             label=f"Cluster {i}",
-#             alpha=0.5,
-#         )
-#     plt.show()
-
-#     from collections import Counter
-
-#     import pandas as pd
-#     import seaborn as sns
-
-#     ys = graph.y[train_idx]
-
-#     df = pd.DataFrame(index=range(num_classes), columns=range(num_clusters), dtype=int)
-#     df.index.name = "class"
-
-#     for i in range(num_clusters):
-#         cnt = Counter(ys[cluster_labels == i].flatten().tolist())
-#         cnt.subtract({label: 0 for label in range(num_classes)})
-#         df[i] = cnt  # for zero counts
-
-#     plt.figure(figsize=(5, 10))
-#     sns.heatmap(df, annot=True, cmap="viridis", fmt="", cbar=False)
-#     plt.show()
-
-#     df_norm_cluster = df / df.sum()
-
-#     plt.figure(figsize=(5, 10))
-#     sns.heatmap(df_norm_cluster, annot=True, cmap="viridis", fmt=".2f", cbar=False)
-#     plt.show()
-
-#     df_norm_class = df.divide(df.sum(axis=1), axis=0)
-
-#     plt.figure(figsize=(5, 10))
-#     sns.heatmap(df_norm_class, annot=True, cmap="viridis", fmt=".2f", cbar=False)
-#     plt.show()
-
-#     # ----------
-
-#     from compute_arxiv_rewire import check_valid
-
-#     graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
-
-#     # the allowable indices are any!
-#     # here we allow it to look at val and test to draw expander
-#     rewire_edge_index = get_rewire_edge_index(rewirer="by_class_all")
-#     check_valid(
-#         rewire_edge_index, graph.y.squeeze(), torch.tensor(range(graph.num_nodes))
-#     )
-
-#     # the allowable indices are in train_idx only!
-#     rewire_edge_index = get_rewire_edge_index(rewirer="by_class_train_only")
-#     check_valid(rewire_edge_index, graph.y.squeeze(), train_idx)
-
-# %%
+    for seed in config.model.seeds:
+        config.model.seed = seed
+        print("Seed: ", seed)
+        for approach in config.model.approaches:
+            if approach == "only_original":
+                rewirers = [None]
+            else:
+                rewirers = config.model.rewirers
+            for rewirer in rewirers:
+                config.model.rewirer = rewirer
+                config.model.approach = approach
+                main(config)

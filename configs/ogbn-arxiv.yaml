@@ -1,19 +1,20 @@
 wandb:
-  project: 'OGBN-ARXIV 12.03'
+  project: 'OGBN-ARXIV Overnight 12.05'
   entity: 'commute_opt_gnn'
 
 model:
   hidden_channels: 128
   num_layers: 3
   drop_prob: 0.5
-  rewirers: ["class_train_only", "class_all", "cayley", "mlp_cs_all", "mlp_all", "knn", "knn_mlp_feats"]
-  approaches: ["only_original", "interleave"]
+  rewirers: ["mlp_all"] # "class_train_only", , "knn", "knn_mlp_feats",  "class_all", "mlp_all", "class_all_fully_connected_clusters"
+  approaches: ["only_original", "interleave"] # "only_original", 
   norm: 'bn'
-  seed: 42
+  seed: None
+  seeds: [17, 47, 23]
   
 train:
   lr: 0.001
-  num_epochs: 400
+  num_epochs: 200
   print_every: 10
   verbose: True
   log_wandb: True

@@ -1,31 +1,44 @@
+import argparse
+import pathlib
 import pickle
 import time
-import argparse
+
 import einops
 import networkx as nx
 import numpy as np
 import torch
-from sklearn.cluster import KMeans
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import silhouette_samples, silhouette_score
-
-from sklearn.decomposition import PCA
-from tqdm import tqdm
-
+import torch.nn.functional as F
 from generate_cayley_graph import CayleyGraphGenerator
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from sklearn.metrics import silhouette_score
+from sklearn.neighbors import KNeighborsClassifier
+from torch_geometric.nn import CorrectAndSmooth
+from torch_geometric.utils.convert import from_networkx
+from tqdm import tqdm
 from train_arxiv_gin import get_ogbn_arxiv
 from train_arxiv_mlp import MLP
 
-import torch.nn.functional as F
-from torch_geometric.nn import CorrectAndSmooth
-from torch_geometric.utils.convert import from_networkx
-
-import random
-
-
-import pathlib
 path_root = pathlib.Path(__file__).parent.resolve() / ".."
 
+
+def get_fully_connected_rewiring(colours, allowable_idx, num_colours: int):
+
+    assert colours.ndim == 1, "Colours must be a one-dimensional array or tensor"
+
+    colours_allowable = colours[allowable_idx]
+
+    all_edges = []
+
+    for colour in tqdm(range(num_colours), desc="Generating fully connected clusters"):
+        nodes_of_colour = allowable_idx[colours_allowable == colour]
+        edges_start, edges_end = torch.combinations(nodes_of_colour, 2).unbind(dim=1)
+        all_edges.append(torch.stack([edges_start, edges_end], dim=0))
+
+    edge_index = torch.cat(all_edges, dim=1)
+    edge_index = torch.cat((edge_index, edge_index.flip(dims=(0,))), dim=-1)
+
+    return edge_index
 
 
 def get_cayley_clusters_rewiring(colours, allowable_idx, num_colours: int):
@@ -115,6 +128,7 @@ def check_valid(rewire_edge_index, colours, allowable_idx):
 
     print("Passed basic checks!")
 
+
 def get_colours_from_kmeans_adaptive(feats):
 
     for n_clusters in range(2, 40):
@@ -133,7 +147,7 @@ def get_colours_from_kmeans_adaptive(feats):
             "For n_clusters =",
             n_clusters,
             "The average silhouette_score is :",
-            silhouette_avg
+            silhouette_avg,
         )
 
     exit()
@@ -172,13 +186,13 @@ def get_colours_from_mlp_cs(
     train_idx,
     valid_idx,
     device="cpu",
-    num_correction_layers = 10,
-    correction_alpha = 0.8,
-    num_smoothing_layers = 10,
-    smoothing_alpha = 0.8,
-    autoscale = True,
-    scale = None,
-    ):
+    num_correction_layers=10,
+    correction_alpha=0.8,
+    num_smoothing_layers=10,
+    smoothing_alpha=0.8,
+    autoscale=True,
+    scale=None,
+):
     """
     with correct and smooth
     """
@@ -202,20 +216,25 @@ def get_colours_from_mlp_cs(
 
     print("Before post-processing")
     preds = y_soft.argmax(dim=-1)
-    print(f"train acc: {(preds[train_idx]  == y_all[train_idx]).sum() / train_idx.size(0)}")
-    print(f"val acc: {(preds[valid_idx]  == y_all[valid_idx]).sum() / valid_idx.size(0)}")
+    print(
+        f"train acc: {(preds[train_idx]  == y_all[train_idx]).sum() / train_idx.size(0)}"
+    )
+    print(
+        f"val acc: {(preds[valid_idx]  == y_all[valid_idx]).sum() / valid_idx.size(0)}"
+    )
 
-
-    print(f"{num_correction_layers=} {correction_alpha=} {num_smoothing_layers=} {smoothing_alpha=} {autoscale=} {scale=}")
+    print(
+        f"{num_correction_layers=} {correction_alpha=} {num_smoothing_layers=} {smoothing_alpha=} {autoscale=} {scale=}"
+    )
 
     print("Initialising CorrectAndSmooth processor")
     cs_processor = CorrectAndSmooth(
-        num_correction_layers = num_correction_layers,
-        correction_alpha = correction_alpha,
-        num_smoothing_layers = num_smoothing_layers,
-        smoothing_alpha = smoothing_alpha,
-        autoscale = True,
-        scale = None,
+        num_correction_layers=num_correction_layers,
+        correction_alpha=correction_alpha,
+        num_smoothing_layers=num_smoothing_layers,
+        smoothing_alpha=smoothing_alpha,
+        autoscale=True,
+        scale=None,
     )
 
     print("Correcting...")
@@ -223,14 +242,16 @@ def get_colours_from_mlp_cs(
     print("Smoothing...")
     y_soft = cs_processor.smooth(y_soft, y_train, train_idx, graph.edge_index)
 
-
     print("After correct and smooth")
     preds = y_soft.argmax(dim=-1)
-    print(f"train acc: {(preds[train_idx]  == y_all[train_idx]).sum() / train_idx.size(0)}")
-    print(f"val acc: {(preds[valid_idx]  == y_all[valid_idx]).sum() / valid_idx.size(0)}")
+    print(
+        f"train acc: {(preds[train_idx]  == y_all[train_idx]).sum() / train_idx.size(0)}"
+    )
+    print(
+        f"val acc: {(preds[valid_idx]  == y_all[valid_idx]).sum() / valid_idx.size(0)}"
+    )
 
     return preds
-
 
 
 @torch.no_grad()
@@ -253,26 +274,25 @@ def get_colours_from_mlp_feats(feats, device="cpu"):
     return torch.from_numpy(kmeans.labels_.astype(np.int64))
 
 
-
-def get_colours_from_knn(X, y, train_idx, valid_idx, test_idx, n_neighbs=10, pca_components=None):
+def get_colours_from_knn(
+    X, y, train_idx, valid_idx, test_idx, n_neighbs=10, pca_components=None
+):
 
     if pca_components is not None:
         pca = PCA(n_components=pca_components)
         X = pca.fit_transform(X)
-    
+
     knn = KNeighborsClassifier(n_neighbs)
     knn.fit(X[train_idx], y[train_idx].squeeze(-1))
 
     colours = np.ones(y.shape, dtype=int) * -1
     colours[train_idx] = y[train_idx]
-    colours[valid_idx] = knn.predict(X[valid_idx]).reshape(-1,1)
-    colours[test_idx] = knn.predict(X[test_idx]).reshape(-1,1)
+    colours[valid_idx] = knn.predict(X[valid_idx]).reshape(-1, 1)
+    colours[test_idx] = knn.predict(X[test_idx]).reshape(-1, 1)
 
     colours = torch.tensor(colours)
 
     return colours
-
-
 
 
 def main():
@@ -290,7 +310,7 @@ def main():
     print(f"Computing rewiring according to: {assign_colours_by}")
 
     graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
-    
+
     # num_nodes = graph.y.shape[0]
     # proportion_corrupted = 0.5
     # num_corrupted = int(num_nodes * proportion_corrupted)
@@ -363,10 +383,9 @@ def main():
 
         with open("../data/arxiv-rewirings/arxiv_rewire_by_cayley", "wb") as f:
             pickle.dump(rewire_edge_index, f)
-        
+
         return
-    
-            
+
     if assign_colours_by == "by_class_train":
         # Cayley clusters rewire edge index on only the train nodes
         # prevent leakage from val and test set labels into train
@@ -377,13 +396,14 @@ def main():
             num_colours=num_classes,
         )
 
-        with open("../data/arxiv-rewirings/arxiv_rewire_by_class_train_only", "wb") as f:
+        with open(
+            "../data/arxiv-rewirings/arxiv_rewire_by_class_train_only", "wb"
+        ) as f:
             pickle.dump(rewire_edge_index, f)
 
         check_valid(rewire_edge_index, graph.y.squeeze(), train_idx)
 
         return
-
 
     if assign_colours_by == "by_class_all":
         # Cayley clusters rewire edge index on all nodes, irrespective of split
@@ -403,7 +423,7 @@ def main():
         )
 
         return
-    
+
     if assign_colours_by == "by_kmeans_all":
 
         normalized_features = graph.x / torch.norm(graph.x, p=2, dim=1, keepdim=True)
@@ -433,15 +453,25 @@ def main():
         one_hot_train = F.one_hot(graph.y.squeeze()[train_idx]).float()
         avg_class = torch.mean(one_hot_train, dim=0)
 
-        enriched_features = torch.zeros((graph.x.shape[0], graph.x.shape[1]+40))
+        enriched_features = torch.zeros((graph.x.shape[0], graph.x.shape[1] + 40))
 
-        enriched_features[train_idx] = torch.cat((graph.x[train_idx], one_hot_train), dim=1)
-        enriched_features[valid_idx] = torch.cat((graph.x[valid_idx], avg_class.repeat(len(valid_idx), 1)), dim=1)
-        enriched_features[test_idx] = torch.cat((graph.x[test_idx], avg_class.repeat(len(test_idx), 1)), dim=1)
+        enriched_features[train_idx] = torch.cat(
+            (graph.x[train_idx], one_hot_train), dim=1
+        )
+        enriched_features[valid_idx] = torch.cat(
+            (graph.x[valid_idx], avg_class.repeat(len(valid_idx), 1)), dim=1
+        )
+        enriched_features[test_idx] = torch.cat(
+            (graph.x[test_idx], avg_class.repeat(len(test_idx), 1)), dim=1
+        )
 
-        normalized_enriched_features = enriched_features / torch.norm(enriched_features, p=2, dim=1, keepdim=True)
+        normalized_enriched_features = enriched_features / torch.norm(
+            enriched_features, p=2, dim=1, keepdim=True
+        )
 
-        k_means_colours = get_colours_from_kmeans(normalized_enriched_features.numpy(), num_classes)
+        k_means_colours = get_colours_from_kmeans(
+            normalized_enriched_features.numpy(), num_classes
+        )
 
         assert k_means_colours.size(0) == graph.num_nodes
 
@@ -451,7 +481,9 @@ def main():
             num_colours=num_classes,
         )
 
-        with open("../data/arxiv-rewirings/arxiv_rewire_by_enriched-kmeans_all", "wb") as f:
+        with open(
+            "../data/arxiv-rewirings/arxiv_rewire_by_enriched-kmeans_all", "wb"
+        ) as f:
             pickle.dump(rewire_edge_index, f)
 
         check_valid(
@@ -460,7 +492,6 @@ def main():
 
         return
 
-    
     if assign_colours_by == "mlp_all":
 
         mlp_colours = get_colours_from_mlp(graph.x)
@@ -476,7 +507,9 @@ def main():
         with open("../data/arxiv-rewirings/arxiv_rewire_by_mlp_all", "wb") as f:
             pickle.dump(rewire_edge_index, f)
 
-        check_valid(rewire_edge_index, mlp_colours, torch.tensor(range(graph.num_nodes)))
+        check_valid(
+            rewire_edge_index, mlp_colours, torch.tensor(range(graph.num_nodes))
+        )
 
         return
 
@@ -495,10 +528,12 @@ def main():
         with open("../data/arxiv-rewirings/arxiv_rewire_by_mlp_cs_all", "wb") as f:
             pickle.dump(rewire_edge_index, f)
 
-        check_valid(rewire_edge_index, mlp_colours, torch.tensor(range(graph.num_nodes)))
+        check_valid(
+            rewire_edge_index, mlp_colours, torch.tensor(range(graph.num_nodes))
+        )
 
         return
-    
+
     if assign_colours_by == "mlp_feats_all":
 
         mlp_colours = get_colours_from_mlp_feats(graph.x)
@@ -514,25 +549,37 @@ def main():
         with open("../data/arxiv-rewirings/arxiv_rewire_by_mlp_feats_all", "wb") as f:
             pickle.dump(rewire_edge_index, f)
 
-        check_valid(rewire_edge_index, mlp_colours, torch.tensor(range(graph.num_nodes)))
+        check_valid(
+            rewire_edge_index, mlp_colours, torch.tensor(range(graph.num_nodes))
+        )
 
         return
-    
-        
+
     if assign_colours_by == "knn":
 
         features = graph.x
         features = features / torch.norm(features, p=2, dim=1, keepdim=True)
-        colours = get_colours_from_knn(features, graph.y, train_idx, valid_idx, test_idx)
+        colours = get_colours_from_knn(
+            features, graph.y, train_idx, valid_idx, test_idx
+        )
 
         assert colours.shape == graph.y.shape
         assert torch.all(colours >= 0)
         assert torch.all(colours < num_classes)
-        
+
         print("KNN classification acc")
-        print("train", torch.sum(colours[train_idx] == graph.y[train_idx]).item() / len(train_idx))
-        print("valid", torch.sum(colours[valid_idx] == graph.y[valid_idx]).item() / len(valid_idx))
-        print("test", torch.sum(colours[test_idx] == graph.y[test_idx]).item() / len(test_idx))
+        print(
+            "train",
+            torch.sum(colours[train_idx] == graph.y[train_idx]).item() / len(train_idx),
+        )
+        print(
+            "valid",
+            torch.sum(colours[valid_idx] == graph.y[valid_idx]).item() / len(valid_idx),
+        )
+        print(
+            "test",
+            torch.sum(colours[test_idx] == graph.y[test_idx]).item() / len(test_idx),
+        )
 
         rewire_edge_index = get_cayley_clusters_rewiring(
             colours.squeeze(),
@@ -543,38 +590,51 @@ def main():
         with open("../data/arxiv-rewirings/arxiv_rewire_by_knn", "wb") as f:
             pickle.dump(rewire_edge_index, f)
 
-        check_valid(
-            rewire_edge_index, colours, torch.tensor(range(graph.num_nodes))
-        )
-        
+        check_valid(rewire_edge_index, colours, torch.tensor(range(graph.num_nodes)))
+
         return
-    
+
     if assign_colours_by == "knn_mlp_feats":
 
-
         model = MLP(
-            graph.x.size(-1), hidden_channels=256, out_channels=40, num_layers=3, dropout=0.5
+            graph.x.size(-1),
+            hidden_channels=256,
+            out_channels=40,
+            num_layers=3,
+            dropout=0.5,
         )
 
         model.load_state_dict(
             torch.load(
-                path_root / "data/models/ogbn-arxiv-mlp-model.pth", map_location=torch.device("cpu")
+                path_root / "data/models/ogbn-arxiv-mlp-model.pth",
+                map_location=torch.device("cpu"),
             )
         )
 
         out, features = model(graph.x, return_feats=True)
         features = features / torch.norm(features, p=2, dim=1, keepdim=True)
         features = features.detach().numpy()
-        colours = get_colours_from_knn(features, graph.y, train_idx, valid_idx, test_idx)
+        colours = get_colours_from_knn(
+            features, graph.y, train_idx, valid_idx, test_idx
+        )
 
         assert colours.shape == graph.y.shape
         assert torch.all(colours >= 0)
         assert torch.all(colours < num_classes)
 
         print("KNN classification acc")
-        print("train", torch.sum(colours[train_idx] == graph.y[train_idx]).item() / len(train_idx))
-        print("valid", torch.sum(colours[valid_idx] == graph.y[valid_idx]).item() / len(valid_idx))
-        print("test", torch.sum(colours[test_idx] == graph.y[test_idx]).item() / len(test_idx))
+        print(
+            "train",
+            torch.sum(colours[train_idx] == graph.y[train_idx]).item() / len(train_idx),
+        )
+        print(
+            "valid",
+            torch.sum(colours[valid_idx] == graph.y[valid_idx]).item() / len(valid_idx),
+        )
+        print(
+            "test",
+            torch.sum(colours[test_idx] == graph.y[test_idx]).item() / len(test_idx),
+        )
 
         rewire_edge_index = get_cayley_clusters_rewiring(
             colours.squeeze(),
@@ -582,17 +642,40 @@ def main():
             num_colours=num_classes,
         )
 
-        with open(path_root / "data/arxiv-rewirings/arxiv_rewire_by_knn_mlp_feats", "wb") as f:
+        with open(
+            path_root / "data/arxiv-rewirings/arxiv_rewire_by_knn_mlp_feats", "wb"
+        ) as f:
+            pickle.dump(rewire_edge_index, f)
+
+        check_valid(rewire_edge_index, colours, torch.tensor(range(graph.num_nodes)))
+
+        return
+
+    if assign_colours_by == "by_class_all_fully_connected_clusters":
+        # Cayley clusters rewire edge index on all nodes, irrespective of split
+        # this is sensible only in the limit of perfect priors that are equivalent to knowing the label
+        print("Generating rewire by class all fully connected clusters")
+
+        rewire_edge_index = get_fully_connected_rewiring(
+            graph.y.squeeze(),
+            allowable_idx=torch.tensor(range(graph.num_nodes)),
+            num_colours=num_classes,
+        )
+
+        with open(
+            "../data/arxiv-rewirings/arxiv_rewire_by_class_all_fully_connected_clusters",
+            "wb",
+        ) as f:
             pickle.dump(rewire_edge_index, f)
 
         check_valid(
-            rewire_edge_index, colours, torch.tensor(range(graph.num_nodes))
+            rewire_edge_index, graph.y.squeeze(), torch.tensor(range(graph.num_nodes))
         )
 
         return
 
     raise NotImplementedError
-        
+
 
 if __name__ == "__main__":
     main()
