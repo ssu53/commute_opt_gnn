@@ -1,6 +1,8 @@
 import argparse
+import json
 import pathlib
 import pickle
+from collections import defaultdict
 from pprint import pprint
 
 import torch
@@ -41,7 +43,7 @@ def get_ogbn_arxiv():
     # print(f"valid frac {len(valid_idx) / graph.num_nodes : .3f}")
     # print(f"test frac {len(test_idx) / graph.num_nodes : .3f}")
 
-    # may change based on args.proportion_train_samples
+    # may change based on config.train.proportion_train_samples
 
     return graph, train_idx, valid_idx, test_idx, NUM_CLASSES
 
@@ -113,6 +115,7 @@ def train_eval_loop(
     data,
     train_idx,
     val_idx,
+    test_idx,
     # test_mask,
     lr: float,
     num_epochs: int,
@@ -234,15 +237,12 @@ def train_eval_loop(
             )
         )
 
-    end_results = {
-        "end": val_acc,
-        "best": max(epoch2valacc.values()),
-    }
+    test_acc = eval_model(data, model, test_idx)
 
     del optimiser
     del loss_fn
 
-    return end_results
+    return test_acc
 
 
 def get_rewire_edge_index(rewirer: str):
@@ -301,8 +301,12 @@ def main(config):
     # -------------------------------
     graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
 
-    print("Reducing number of train samples by ", args.proportion_train_samples, "x")
-    num_train_samples = int(len(train_idx) * args.proportion_train_samples)
+    print(
+        "Reducing number of train samples by ",
+        config.train.proportion_train_samples,
+        "x",
+    )
+    num_train_samples = int(len(train_idx) * config.train.proportion_train_samples)
     permuted_indices = torch.randperm(len(train_idx))[:num_train_samples]
     train_idx = train_idx[permuted_indices]
 
@@ -346,21 +350,26 @@ def main(config):
             project=config.wandb.project,
             entity=config.wandb.entity,
             config=config,
-            group=f"{args.proportion_train_samples}-rewirer-{config.model.rewirer}-{config.model.approach}",
+            group=f"{config.train.proportion_train_samples}-rewirer-{config.model.rewirer}-{config.model.approach}",
         )
-        wandb.run.name = f"{args.proportion_train_samples}-{config.model.rewirer}-{config.model.approach}-seed-{config.model.seed}"
+        wandb.run.name = f"{config.train.proportion_train_samples}-{config.model.rewirer}-{config.model.approach}-seed-{config.model.seed}"
 
-    end_results = train_eval_loop(
+    test_acc = train_eval_loop(
         model,
         graph,
         train_idx,
         valid_idx,
+        test_idx,
         lr=config.train.lr,
         num_epochs=config.train.num_epochs,
         print_every=config.train.print_every,
         verbose=config.train.verbose,
         log_wandb=config.train.log_wandb,
     )
+
+    results[config.train.proportion_train_samples][
+        f"{config.model.rewirer}-{config.model.approach}"
+    ].append(test_acc)
 
     wandb.finish()
 
@@ -373,27 +382,32 @@ if __name__ == "__main__":
         help="configuration file name",
         type=str,
     )
-    parser.add_argument(
-        "--proportion_train_samples",
-        default=1.0,
-        help="proportion of training samples to use",
-        type=float,
-    )
 
     args = parser.parse_args()
 
     with open(args.config_fn, "r") as f:
         config = EasyDict(yaml.safe_load(f))
 
-    for seed in config.model.seeds:
-        config.model.seed = seed
-        print("Seed: ", seed)
-        for approach in config.model.approaches:
-            if approach == "only_original":
-                rewirers = [None]
-            else:
-                rewirers = config.model.rewirers
-            for rewirer in rewirers:
-                config.model.rewirer = rewirer
-                config.model.approach = approach
-                main(config)
+    results = {x: defaultdict(list) for x in config.train.proportion_train_samples_list}
+
+    for proportion_train_samples in config.train.proportion_train_samples_list:
+        config.train.proportion_train_samples = proportion_train_samples
+        for seed in config.model.seeds:
+            config.model.seed = seed
+            for approach in config.model.approaches:
+                if approach == "only_original":
+                    rewirers = [None]
+                else:
+                    rewirers = config.model.rewirers
+                for rewirer in rewirers:
+                    config.model.rewirer = rewirer
+                    config.model.approach = approach
+                    main(config)
+
+    pprint(results)
+
+    with open(
+        "../data/results/arxiv_results.json",
+        "w",
+    ) as f:
+        json.dump(dict(results), f, indent=4)
