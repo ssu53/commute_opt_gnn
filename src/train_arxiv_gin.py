@@ -12,17 +12,22 @@ import yaml
 from easydict import EasyDict
 from gin import GINModel
 from ogb.nodeproppred import PygNodePropPredDataset
+from torch_geometric.transforms import ToSparseTensor
+from torch_geometric.typing import SparseTensor
 from tqdm import tqdm
 from train_synthetic import count_parameters, set_seed
 
 
-def get_ogbn_arxiv():
+def get_ogbn_arxiv(as_sparse: bool = True):
     """
     see data description at https://ogb.stanford.edu/docs/nodeprop/#ogbn-arxiv
     """
 
     path_root = pathlib.Path(__file__).parent.resolve() / ".."
-    dataset = PygNodePropPredDataset(name="ogbn-arxiv", root=path_root / "data")
+    if as_sparse:
+        dataset = PygNodePropPredDataset(name="ogbn-arxiv", root=path_root / "data", transform=ToSparseTensor())
+    else:
+        dataset = PygNodePropPredDataset(name="ogbn-arxiv", root=path_root / "data")
 
     NUM_CLASSES = 40
 
@@ -245,7 +250,7 @@ def train_eval_loop(
     return test_acc
 
 
-def get_rewire_edge_index(rewirer: str):
+def get_rewire_edge_index(rewirer: str, as_sparse: bool = True):
     """
     these are various ways to instantiate Cayley clusters on this dataset
     """
@@ -285,6 +290,12 @@ def get_rewire_edge_index(rewirer: str):
 
     print("Opened")
 
+    if as_sparse:
+        rewire_edge_index = SparseTensor(
+            row=rewire_edge_index[1],
+            col=rewire_edge_index[0],
+        )
+
     return rewire_edge_index
 
 
@@ -299,7 +310,7 @@ def main(config):
 
     # load dataset
     # -------------------------------
-    graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv()
+    graph, train_idx, valid_idx, test_idx, num_classes = get_ogbn_arxiv(as_sparse=config.train.as_sparse)
 
     print(
         "Reducing number of train samples by ",
@@ -316,7 +327,7 @@ def main(config):
     # attach the rewirer
     # -------------------------------
     if config.model.rewirer is not None:
-        graph.rewire_edge_index = get_rewire_edge_index(config.model.rewirer)
+        graph.rewire_edge_index = get_rewire_edge_index(config.model.rewirer, as_sparse=config.train.as_sparse)
 
     # get moodel
     # -------------------------------

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch_geometric.nn import MessagePassing, global_add_pool, global_mean_pool
+import torch_sparse
 
 
 class MyGINConv(MessagePassing):
@@ -38,6 +39,12 @@ class MyGINConv(MessagePassing):
 
     def update(self, aggr_out):
         return aggr_out
+
+    def message_and_aggregate(self, adj_t, x):
+        """
+        See: https://pytorch-geometric.readthedocs.io/en/latest/notes/sparse_tensor.html
+        """
+        return torch_sparse.matmul(adj_t, torch.nn.functional.relu(x), reduce=self.aggr)
 
 
 
@@ -117,14 +124,19 @@ class GINModel(nn.Module):
         x = data.x
         x = self.lin_in(x)
 
+        if hasattr(data, 'adj_t'): 
+            edge_index = data.adj_t # sparse representation
+        else: 
+            edge_index = data.edge_index
+
         for i, conv in enumerate(self.convs):
             if self.only_original_graph:
-                x = x + conv(x, data.edge_index)
+                x = x + conv(x, edge_index)
             elif self.only_diff_graph:
                 x = x + conv(x, data.rewire_edge_index)
             elif self.interleave_diff_graph:
                 if i % 2 == 0:
-                    x = x + conv(x, data.edge_index)
+                    x = x + conv(x, edge_index)
                 else:
                     x = x + conv(x, data.rewire_edge_index)
             else:

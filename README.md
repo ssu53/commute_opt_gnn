@@ -11,6 +11,21 @@ pip install torch --extra-index-url https://download.pytorch.org/whl/cu113
 pip install -r requirements.txt
 ```
 
+Shiye's setup:
+
+Python 3.10.12 
+
+```
+python3 -m venv /path/to/venv
+source /path/to/venv/bin/activate
+pip install torch==2.1.0
+pip install torch-sparse -f https://data.pyg.org/whl/torch-2.1.0+cu121.html
+pip install torch-scatter -f https://data.pyg.org/whl/torch-2.1.0+cu121.html
+pip install -r requirements.txt
+```
+
+(Replace cu121 with your appropriate cuda version.)
+
 
 ## Models
 

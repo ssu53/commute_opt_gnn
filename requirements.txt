@@ -1,7 +1,7 @@
 numpy
 networkx
 jupyter
-torch
+torch==2.1.0
 einops
 torch-geometric
 matplotlib
@@ -9,4 +9,5 @@ wandb
 easydict
 prettytable
 ogb
-torch-cluster
+torch-sparse
+torch-scatter
